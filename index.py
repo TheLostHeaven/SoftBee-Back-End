@@ -1,5 +1,4 @@
 from app import app_create
-# from src.utils.rolecreate import create_roles, create_admin_user
 
 app = app_create()
 

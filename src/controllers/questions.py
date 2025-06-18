@@ -31,8 +31,8 @@ class QuestionController:
             pregunta=question_data['pregunta'],
             tipo=question_data['tipo'],
             obligatorio=question_data['obligatorio'],
-            min_val=question_data.get('min_val'),
-            max_val=question_data.get('max_val'),
+            min=question_data.get('min'),
+            max=question_data.get('max'),
             opciones=question_data.get('opciones')
         )
         
@@ -73,8 +73,8 @@ class QuestionController:
             'id': raw_question['id'],
             'pregunta': raw_question['pregunta'],
             'tipo': raw_question['tipo'],
-            'min_val': raw_question['min'],
-            'max_val': raw_question['max'],
+            'min': raw_question['min'],
+            'max': raw_question['max'],
             'obligatorio': bool(raw_question['obligatorio']),
             'opciones': raw_question['opciones'].split(',') if raw_question['opciones'] else None,
             'id_externo': raw_question['id_externo']

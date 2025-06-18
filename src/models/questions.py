@@ -46,13 +46,13 @@ class QuestionModel:
         )[0] if QuestionModel._execute_query(db, 'SELECT 1 FROM question WHERE id = ?', (question_id,)) else None
 
     @staticmethod
-    def create_raw(db, pregunta, tipo, obligatorio, min_val=None, max_val=None, opciones=None):
+    def create_raw(db, pregunta, tipo, obligatorio, min=None, max=None, opciones=None):
         """Crea una nueva pregunta (operación cruda)"""
         cursor = QuestionModel._execute_update(
             db,
-            'INSERT INTO question (pregunta, tipo, min_val, max_val, obligatorio, opciones) '
+            'INSERT INTO question (pregunta, tipo, min, max, obligatorio, opciones) '
             'VALUES (?, ?, ?, ?, ?, ?)',
-            (pregunta, tipo, min_val, max_val, 1 if obligatorio else 0, 
+            (pregunta, tipo, min, max, 1 if obligatorio else 0, 
             ','.join(opciones) if opciones else None)
         )
         return cursor.lastrowid
@@ -60,7 +60,7 @@ class QuestionModel:
     @staticmethod
     def update_raw(db, question_id, **kwargs):
         """Actualiza una pregunta (operación cruda)"""
-        allowed_fields = {'pregunta', 'tipo', 'min_val', 'max_val', 'obligatorio', 'opciones'}
+        allowed_fields = {'pregunta', 'tipo', 'min', 'max', 'obligatorio', 'opciones'}
         updates = {k: v for k, v in kwargs.items() if k in allowed_fields}
         
         if not updates:

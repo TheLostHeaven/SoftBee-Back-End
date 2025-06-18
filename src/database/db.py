@@ -37,14 +37,9 @@ def init_database(db):
     init_beehive(db)
     init_inspection(db)
     init_apiary_access(db)
-    # Asegurar que los cambios se guarden
     db.commit()
 
 def init_app(app):
     """Registra las funciones con la aplicación Flask y crea tablas al inicio"""
     app.teardown_appcontext(close_db)
     
-    # Crear tablas al iniciar la aplicación (opcional)
-    with app.app_context():
-        db = get_db()  # Esto creará las tablas si no existen
-        close_db(db)     # Cerramos la conexión después de la inicialización

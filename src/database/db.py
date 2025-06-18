@@ -8,6 +8,7 @@ from src.models.beehive import BeehiveModel
 from src.models.inspection import InspectionModel
 from src.models.apiary_access import ApiaryAccessModel
 from src.models.questions import QuestionModel
+from src.models.inventory import InventoryModel
 
 def get_db():
     """Obtiene o crea una conexión a la base de datos"""
@@ -36,6 +37,7 @@ def init_database(db):
     InspectionModel.init_db(db)
     ApiaryAccessModel.init_db(db)
     QuestionModel.init_db(db)
+    InventoryModel.init_db(db)
     db.commit()
 
 def init_app(app):

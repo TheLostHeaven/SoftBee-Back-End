@@ -2,11 +2,11 @@
 import sqlite3
 import os
 from flask import g, current_app
-from src.models.users import init_users
-from src.models.apiary import init_apiary
-from src.models.beehive import init_beehive
-from src.models.inspection import init_inspection
-from src.models.apiary_access import init_apiary_access
+from src.models.users import UserModel
+from src.models.apiary import ApiaryModel
+from src.models.beehive import BeehiveModel
+from src.models.inspection import InspectionModel
+from src.models.apiary_access import ApiaryAccessModel
 from src.models.questions import QuestionModel
 
 def get_db():
@@ -30,11 +30,11 @@ def close_db(e=None):
 
 def init_database(db):
     """Inicializa todas las tablas en la base de datos"""
-    init_users(db)
-    init_apiary(db)
-    init_beehive(db)
-    init_inspection(db)
-    init_apiary_access(db)
+    UserModel.init_db(db)
+    ApiaryModel.init_db(db)
+    BeehiveModel.init_db(db)
+    InspectionModel.init_db(db)
+    ApiaryAccessModel.init_db(db)
     QuestionModel.init_db(db)
     db.commit()
 

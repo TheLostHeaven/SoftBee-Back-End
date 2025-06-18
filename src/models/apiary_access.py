@@ -1,66 +1,87 @@
-def init(db):
-    db.execute('''
-        CREATE TABLE IF NOT EXISTS apiary_access (
-            user_id INTEGER NOT NULL,
-            apiary_id INTEGER NOT NULL,
-            permission_level INTEGER DEFAULT 1, 
-            PRIMARY KEY (user_id, apiary_id),
-            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-            FOREIGN KEY (apiary_id) REFERENCES apiary(id) ON DELETE CASCADE
-        )
-    ''')
-    
-    db.execute('CREATE INDEX IF NOT EXISTS idx_access_user ON apiary_access(user_id)')
-    db.execute('CREATE INDEX IF NOT EXISTS idx_access_apiary ON apiary_access(apiary_id)')
-
-class ApiaryAccess:
-    READ = 1
-    WRITE = 2
-    ADMIN = 3
-    
+class ApiaryAccessModel:
     @staticmethod
-    def grant_access(user_id, apiary_id, permission_level=READ):
-        """Concede acceso a un apiario"""
-        db = db.get_db()
-        db.execute('''
-            INSERT INTO apiary_access (user_id, apiary_id, permission_level)
-            VALUES (?, ?, ?)
-            ON CONFLICT(user_id, apiary_id) DO UPDATE SET
-                permission_level = excluded.permission_level
-        ''', (user_id, apiary_id, permission_level))
-        db.commit()
-    
-    @staticmethod
-    def revoke_access(user_id, apiary_id):
-        """Revoca el acceso a un apiario"""
-        db = db.get_db()
-        db.execute('''
-            DELETE FROM apiary_access 
-            WHERE user_id = ? AND apiary_id = ?
-        ''', (user_id, apiary_id))
-        db.commit()
-    
-    @staticmethod
-    def get_user_permissions(user_id):
-        """Obtiene todos los apiarios a los que tiene acceso un usuario"""
-        db = db.get_db()
-        return db.execute('''
-            SELECT a.*, aa.permission_level
-            FROM apiary a
-            JOIN apiary_access aa ON a.id = aa.apiary_id
-            WHERE aa.user_id = ?
-        ''', (user_id,)).fetchall()
-    
-    @staticmethod
-    def check_permission(user_id, apiary_id, required_level=READ):
-        """Verifica si un usuario tiene un permiso específico"""
-        db = db.get_db()
-        access = db.execute('''
-            SELECT permission_level 
-            FROM apiary_access
-            WHERE user_id = ? AND apiary_id = ?
-        ''', (user_id, apiary_id)).fetchone()
+    def init_db(db):
+        try:
+            db.execute('''
+            CREATE TABLE IF NOT EXISTS apiary_access (
+                user_id INTEGER NOT NULL,
+                apiary_id INTEGER NOT NULL,
+                permission_level INTEGER DEFAULT 1, 
+                PRIMARY KEY (user_id, apiary_id),
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+                FOREIGN KEY (apiary_id) REFERENCES apiary(id) ON DELETE CASCADE
+            )
+        ''')
+            db.execute('CREATE INDEX IF NOT EXISTS idx_access_user ON apiary_access(user_id)')
+            db.execute('CREATE INDEX IF NOT EXISTS idx_access_apiary ON apiary_access(apiary_id)')
+            db.commit()
+        except Exception as e:
+            db.rollback()
+            raise e
         
-        return access and access['permission_level'] >= required_level
+    @staticmethod
+    def _execute_query(db, query, params=()):
+        """Ejecuta una consulta y retorna resultados"""
+        return db.execute(query, params).fetchall()
     
+    @staticmethod
+    def _execute_update(db, query, params=()):
+        """Ejecuta una actualización y hace commit"""
+        cursor = db.execute(query, params)
+        db.commit()
+        return cursor
+    
+    @staticmethod
+    def get_all_raw(db):
+        """Obtiene todos los accesos a apiarios (datos crudos)"""
+        return ApiaryAccessModel._execute_query(db, 'SELECT * FROM apiary_access ORDER BY user_id, apiary_id')
+
+    @staticmethod
+    def get_by_user_id_raw(db, user_id):
+        """Obtiene todos los accesos de un usuario específico (datos crudos)"""
+        return ApiaryAccessModel._execute_query(
+            db, 
+            'SELECT * FROM apiary_access WHERE user_id = ? ORDER BY apiary_id', 
+            (user_id,)
+        )
+    
+    @staticmethod
+    def get_by_apiary_id_raw(db, apiary_id):
+        """Obtiene todos los accesos a un apiario específico (datos crudos)"""
+        return ApiaryAccessModel._execute_query(
+            db, 
+            'SELECT * FROM apiary_access WHERE apiary_id = ? ORDER BY user_id', 
+            (apiary_id,)
+        )
+    
+    @staticmethod
+    def create_raw(db, user_id, apiary_id, permission_level=1):
+        """Crea un nuevo acceso a un apiario (operación cruda)"""
+        cursor = ApiaryAccessModel._execute_update(
+            db,
+            'INSERT INTO apiary_access (user_id, apiary_id, permission_level) '
+            'VALUES (?, ?, ?)',
+            (user_id, apiary_id, permission_level)
+        )
+        return cursor.lastrowid
+    
+    @staticmethod
+    def update_raw(db, user_id, apiary_id, permission_level):
+        """Actualiza el nivel de acceso a un apiario existente (operación cruda)"""
+        cursor = ApiaryAccessModel._execute_update(
+            db,
+            'UPDATE apiary_access SET permission_level = ? WHERE user_id = ? AND apiary_id = ?',
+            (permission_level, user_id, apiary_id)
+        )
+        return cursor.rowcount > 0
+    
+    @staticmethod
+    def delete_raw(db, user_id, apiary_id):
+        """Elimina un acceso a un apiario por usuario y apiario (operación cruda)"""
+        cursor = ApiaryAccessModel._execute_update(
+            db, 
+            'DELETE FROM apiary_access WHERE user_id = ? AND apiary_id = ?', 
+            (user_id, apiary_id)
+        )
+        return cursor.rowcount > 0
     

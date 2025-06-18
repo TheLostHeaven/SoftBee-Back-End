@@ -1,7 +1,6 @@
 class QuestionModel:
     @staticmethod
     def init_db(db):
-        """Inicializa la base de datos usando una conexión existente"""
         try:
             db.execute('''
                 CREATE TABLE IF NOT EXISTS question (

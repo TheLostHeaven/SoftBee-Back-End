@@ -5,17 +5,17 @@ class InventoryController:
         self.db = db
         self.model = InventoryModel
 
-    def create_item(self, user_id, item_name, quantity=0, unit='unit'):
-        """Creates a new inventory item for a user"""
-        return self.model.create(self.db, user_id, item_name, quantity, unit)
+    def create_item(self, apiary_id, item_name, quantity=0, unit='unit'):
+        """Creates a new inventory item for an apiary"""
+        return self.model.create(self.db, apiary_id, item_name, quantity, unit)
 
     def get_item(self, item_id):
         """Gets inventory item by ID"""
         return self.model.get_by_id(self.db, item_id)
 
-    def get_user_items(self, user_id):
-        """Gets all inventory items for a user"""
-        return self.model.get_all(self.db, user_id)
+    def get_apiary_items(self, apiary_id):
+        """Gets all inventory items for an apiary"""
+        return self.model.get_all(self.db, apiary_id)
 
     def update_item(self, item_id, **kwargs):
         """Updates inventory item information"""
@@ -25,13 +25,13 @@ class InventoryController:
         """Deletes an inventory item"""
         self.model.delete(self.db, item_id)
 
-    def delete_by_name(self, user_id, item_name):
-        """Deletes inventory item(s) by name for a user"""
-        self.model.delete_by_name(self.db, user_id, item_name)
+    def delete_by_name(self, apiary_id, item_name):
+        """Deletes inventory item(s) by name for an apiary"""
+        self.model.delete_by_name(self.db, apiary_id, item_name)
 
-    def search_items(self, user_id, item_name):
-        """Searches inventory items by name for a user"""
-        return self.model.get_by_name(self.db, user_id, item_name)
+    def search_items(self, apiary_id, item_name):
+        """Searches inventory items by name for an apiary"""
+        return self.model.get_by_name(self.db, apiary_id, item_name)
 
     def adjust_quantity(self, item_id, amount):
         """Adjusts inventory quantity by amount"""

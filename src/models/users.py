@@ -12,7 +12,7 @@ class UserModel:
                     nombre TEXT NOT NULL,
                     username TEXT NOT NULL UNIQUE,
                     email TEXT NOT NULL UNIQUE,
-                    phone TEXT NOT NULL,
+                    phone INTEGER NOT NULL,
                     password TEXT NOT NULL,
                     reset_token TEXT,
                     reset_token_expiry DATETIME,

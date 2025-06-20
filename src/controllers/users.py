@@ -13,12 +13,6 @@ class UserController:
         hashed_password = generate_password_hash(password)
         return self.model.create(self.db, nombre, username, email, phone, hashed_password)
 
-    def verify_user(self, username, password):
-        """Verifies user credentials"""
-        user = self.model.get_by_username(self.db, username)
-        if user and check_password_hash(user['password'], password):
-            return user
-        return None
 
     def get_user(self, user_id):
         """Gets user by ID"""
@@ -38,22 +32,4 @@ class UserController:
         """Deletes a user"""
         self.model.delete(self.db, user_id)
 
-    def initiate_password_reset(self, email):
-        """Initiates password reset process"""
-        user = self.model.get_by_email(self.db, email)
-        if not user:
-            return None
 
-        token = secrets.token_urlsafe(32)
-        self.model.set_reset_token(self.db, email, token)
-        return token
-
-    def reset_password(self, token, new_password):
-        """Resets password using valid token"""
-        user = self.model.verify_reset_token(self.db, token)
-        if not user:
-            return False
-
-        hashed_password = generate_password_hash(new_password)
-        self.model.update_password(self.db, user['id'], hashed_password)
-        return True

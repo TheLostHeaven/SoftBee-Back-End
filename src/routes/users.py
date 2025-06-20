@@ -78,47 +78,4 @@ def create_user_routes():
         except Exception as e:
             return jsonify({'error': str(e)}), 400
 
-    @user_bp.route('/login', methods=['POST'])
-    def login():
-        controller = get_controller()
-        data = request.get_json()
-
-        if 'username' not in data or 'password' not in data:
-            return jsonify({'error': 'Username and password required'}), 400
-
-        user = controller.verify_user(data['username'], data['password'])
-        if not user:
-            return jsonify({'error': 'Invalid credentials'}), 401
-
-        user.pop('password', None)
-        user.pop('reset_token', None)
-        user.pop('reset_token_expiry', None)
-        return jsonify(user), 200
-
-    @user_bp.route('/reset-password', methods=['POST'])
-    def request_reset():
-        controller = get_controller()
-
-        if 'email' not in request.json:
-            return jsonify({'error': 'Email required'}), 400
-
-        token = controller.initiate_password_reset(request.json['email'])
-        if not token:
-            return jsonify({'error': 'Email not found'}), 404
-
-        return jsonify({'token': token}), 200
-
-    @user_bp.route('/reset-password/<token>', methods=['POST'])
-    def reset_password(token):
-        controller = get_controller()
-
-        if 'new_password' not in request.json:
-            return jsonify({'error': 'New password required'}), 400
-
-        success = controller.reset_password(token, request.json['new_password'])
-        if not success:
-            return jsonify({'error': 'Invalid or expired token'}), 400
-
-        return jsonify({'message': 'Password updated'}), 200
-
     return user_bp

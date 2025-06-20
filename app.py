@@ -1,4 +1,5 @@
 from flask import Flask
+from flask_cors import CORS
 import os
 #from src.routes.users import user_bp
 
@@ -7,6 +8,7 @@ from config import Config
 def create_app(testing=False):
     app = Flask(__name__, instance_relative_config=True)
     app.config.from_object(Config)
+    CORS(app)
     
     # Configuración de la base de datos
     app.config['DATABASE'] = os.path.join(app.instance_path, 'app.db')

@@ -7,8 +7,8 @@ class QuestionController:
         self.model = QuestionModel
     
     def create_question(self, user_id, question_id, question_text, question_type, 
-                       is_required=False, display_order=0, min_value=None, 
-                       max_value=None, options=None, depends_on=None, is_active=True):
+                    is_required=False, display_order=0, min_value=None, 
+                    max_value=None, options=None, depends_on=None, is_active=True):
         """Creates a new question for a user"""
         if question_type == 'option' and (not options or len(options) < 2):
             raise ValueError("Option questions require at least 2 options")

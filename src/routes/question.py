@@ -1,86 +1,95 @@
-from flask import Blueprint, request, jsonify, current_app, g
-from src.controllers.questions import QuestionController
+from flask import Blueprint, request, jsonify
+from ..controllers.questions import QuestionController
 from src.database.db import get_db
 
-question_bp = Blueprint('questions', __name__)
+def create_question_routes():
+    question_bp = Blueprint('question_routes', __name__)
 
-@question_bp.route('/questions', methods=['GET'])
-def get_questions():
-    db = get_db()
-    try:
-        questions = QuestionController.get_all_questions(db)
-        return jsonify(questions)
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-    finally:
-        db.close()
+    @question_bp.route('/questions', methods=['POST'])
+    def create_question():
+        db = get_db()
+        controller = QuestionController(db)
 
-# GET /questions/<id> - Obtener una pregunta específica
-@question_bp.route('/questions/<int:question_id>', methods=['GET'])
-def get_question(question_id):
-    db = get_db()
-    try:
-        question = QuestionController.get_question_by_id(db, question_id)
+        data = request.get_json()
+        required = ['user_id', 'question_id', 'question_text', 'question_type']
+        if not all(field in data for field in required):
+            return jsonify({'error': 'Missing required fields'}), 400
+
+        try:
+            question_id = controller.create_question(
+                data['user_id'],
+                data['question_id'],
+                data['question_text'],
+                data['question_type'],
+                data.get('is_required', False),
+                data.get('display_order', 0),
+                data.get('min_value'),
+                data.get('max_value'),
+                data.get('options'),
+                data.get('depends_on'),
+                data.get('is_active', True)
+            )
+            return jsonify({'id': question_id}), 201
+        except Exception as e:
+            return jsonify({'error': str(e)}), 400
+
+    @question_bp.route('/questions/<question_id>', methods=['GET'])
+    def get_question(question_id):
+        db = get_db()
+        controller = QuestionController(db)
+
+        question = controller.get_question(question_id)
         if not question:
-            return jsonify({'error': 'Pregunta no encontrada'}), 404
-        return jsonify(question)
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-    finally:
-        db.close()
+            return jsonify({'error': 'Question not found'}), 404
+        return jsonify(question), 200
 
-# POST /questions - Crear una nueva pregunta
-@question_bp.route('/questions', methods=['POST'])
-def create_question():
-    db = get_db()
-    try:
+    @question_bp.route('/users/<int:user_id>/questions', methods=['GET'])
+    def get_user_questions(user_id):
+        db = get_db()
+        controller = QuestionController(db)
+
+        active_only = request.args.get('active_only', 'true').lower() == 'true'
+        questions = controller.get_user_questions(user_id, active_only)
+        return jsonify(questions), 200
+
+    @question_bp.route('/questions/<question_id>', methods=['PUT'])
+    def update_question(question_id):
+        db = get_db()
+        controller = QuestionController(db)
+
         data = request.get_json()
-        question_id = QuestionController.create_question(db, data)
-        return jsonify({'id': question_id}), 201
-    except ValueError as e:
-        return jsonify({'error': str(e)}), 400
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-    finally:
-        db.close()
+        if not data:
+            return jsonify({'error': 'No data provided'}), 400
 
-# PUT /questions/<id> - Actualizar una pregunta
-@question_bp.route('/questions/<int:question_id>', methods=['PUT'])
-def update_question(question_id):
-    db = get_db()
-    try:
-        data = request.get_json()
-        QuestionController.update_question(db, question_id, data)
-        return jsonify({'message': 'Pregunta actualizada correctamente'}), 200
-    except ValueError as e:
-        return jsonify({'error': str(e)}), 400
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-    finally:
-        db.close()
+        try:
+            controller.update_question(question_id, **data)
+            return jsonify({'message': 'Question updated'}), 200
+        except Exception as e:
+            return jsonify({'error': str(e)}), 400
 
-# DELETE /questions/<id> - Eliminar una pregunta
-@question_bp.route('/questions/<int:question_id>', methods=['DELETE'])
-def delete_question(question_id):
-    db = get_db()
-    try:
-        QuestionController.delete_question(db, question_id)
-        return jsonify({'message': 'Pregunta eliminada correctamente'}), 200
-    except ValueError as e:
-        return jsonify({'error': str(e)}), 404
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-    finally:
-        db.close()
+    @question_bp.route('/questions/<question_id>', methods=['DELETE'])
+    def delete_question(question_id):
+        db = get_db()
+        controller = QuestionController(db)
 
-# GET /questions/type/<tipo> - Obtener preguntas por tipo
-@question_bp.route('/questions/type/<string:tipo>', methods=['GET'])
-def get_questions_by_type(tipo):
-    db = get_db()
-    try:
-        questions = QuestionController.get_questions_by_type(db, tipo)
-        return jsonify(questions)
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-    finally:
-        db.close()
+        try:
+            controller.delete_question(question_id)
+            return jsonify({'message': 'Question deleted'}), 200
+        except Exception as e:
+            return jsonify({'error': str(e)}), 400
+
+    @question_bp.route('/users/<int:user_id>/questions/reorder', methods=['PUT'])
+    def reorder_questions(user_id):
+        db = get_db()
+        controller = QuestionController(db)
+
+        if 'order' not in request.json or not isinstance(request.json['order'], list):
+            return jsonify({'error': 'Order list required'}), 400
+
+        try:
+            controller.reorder_questions(user_id, request.json['order'])
+            return jsonify({'message': 'Questions reordered'}), 200
+        except Exception as e:
+            return jsonify({'error': str(e)}), 400
+
+    return question_bp

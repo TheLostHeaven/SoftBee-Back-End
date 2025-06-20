@@ -1,97 +1,125 @@
+import sqlite3
+import json
+
 class QuestionModel:
     @staticmethod
     def init_db(db):
         try:
             db.execute('''
-                CREATE TABLE IF NOT EXISTS question (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    pregunta TEXT NOT NULL,
-                    tipo TEXT NOT NULL,
-                    min INTEGER,
-                    max INTEGER,
-                    obligatorio BOOLEAN NOT NULL DEFAULT 0,
-                    opciones TEXT,
-                    id_externo TEXT UNIQUE 
+                CREATE TABLE IF NOT EXISTS questions (
+                    id TEXT PRIMARY KEY,
+                    user_id INTEGER NOT NULL,
+                    question_text TEXT NOT NULL,
+                    question_type TEXT NOT NULL CHECK(question_type IN ('text', 'number', 'option')),
+                    is_required BOOLEAN NOT NULL DEFAULT 0,
+                    display_order INTEGER NOT NULL,
+                    min_value INTEGER,
+                    max_value INTEGER,
+                    options TEXT,  -- JSON array for option questions
+                    depends_on TEXT,
+                    is_active BOOLEAN NOT NULL DEFAULT 1,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
                 )
             ''')
-            db.execute('CREATE INDEX IF NOT EXISTS idx_question_tipo ON question(tipo)')
+            db.execute('CREATE INDEX IF NOT EXISTS idx_questions_user_id ON questions(user_id)')
             db.commit()
-        except Exception as e:
+        except sqlite3.Error as e:
             db.rollback()
             raise e
+    
     @staticmethod
     def _execute_query(db, query, params=()):
-        """Ejecuta una consulta y retorna resultados"""
         return db.execute(query, params).fetchall()
-
+    
     @staticmethod
     def _execute_update(db, query, params=()):
-        """Ejecuta una actualización y hace commit"""
         cursor = db.execute(query, params)
         db.commit()
         return cursor
-
+    
     @staticmethod
-    def get_all_raw(db):
-        """Obtiene todas las preguntas (datos crudos)"""
-        return QuestionModel._execute_query(db, 'SELECT * FROM question ORDER BY id')
-
-    @staticmethod
-    def get_by_id_raw(db, question_id):
-        """Obtiene una pregunta por ID (datos crudos)"""
-        return QuestionModel._execute_query(
-            db, 
-            'SELECT * FROM question WHERE id = ?', 
-            (question_id,)
-        )[0] if QuestionModel._execute_query(db, 'SELECT 1 FROM question WHERE id = ?', (question_id,)) else None
-
-    @staticmethod
-    def create_raw(db, pregunta, tipo, obligatorio, min=None, max=None, opciones=None):
-        """Crea una nueva pregunta (operación cruda)"""
+    def create(db, user_id, question_id, question_text, question_type, is_required=False, 
+               display_order=0, min_value=None, max_value=None, options=None, depends_on=None, is_active=True):
+        
+        options_json = json.dumps(options) if options else None
+        
         cursor = QuestionModel._execute_update(
             db,
-            'INSERT INTO question (pregunta, tipo, min, max, obligatorio, opciones) '
-            'VALUES (?, ?, ?, ?, ?, ?)',
-            (pregunta, tipo, min, max, 1 if obligatorio else 0, 
-            ','.join(opciones) if opciones else None)
+            '''
+            INSERT INTO questions 
+            (user_id, id, question_text, question_type, is_required, display_order, 
+             min_value, max_value, options, depends_on, is_active)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''',
+            (user_id, question_id, question_text, question_type, int(is_required), display_order,
+             min_value, max_value, options_json, depends_on, int(is_active))
         )
         return cursor.lastrowid
-
+    
     @staticmethod
-    def update_raw(db, question_id, **kwargs):
-        """Actualiza una pregunta (operación cruda)"""
-        allowed_fields = {'pregunta', 'tipo', 'min', 'max', 'obligatorio', 'opciones'}
-        updates = {k: v for k, v in kwargs.items() if k in allowed_fields}
+    def get_by_id(db, question_id):
+        result = QuestionModel._execute_query(db, 'SELECT * FROM questions WHERE id = ?', (question_id,))
+        if result:
+            question = dict(result[0])
+            if question['options']:
+                question['options'] = json.loads(question['options'])
+            return question
+        return None
+    
+    @staticmethod
+    def get_by_user(db, user_id, active_only=True):
+        query = 'SELECT * FROM questions WHERE user_id = ?'
+        params = [user_id]
         
-        if not updates:
-            return False
-            
-        set_clause = ', '.join(f"{k} = ?" for k in updates)
-        values = list(updates.values())
-        values.append(question_id)
+        if active_only:
+            query += ' AND is_active = 1'
         
-        QuestionModel._execute_update(
-            db,
-            f'UPDATE question SET {set_clause} WHERE id = ?',
-            values
-        )
-        return True
-
+        query += ' ORDER BY display_order'
+        
+        questions = QuestionModel._execute_query(db, query, params)
+        processed = []
+        for q in questions:
+            question = dict(q)
+            if question['options']:
+                question['options'] = json.loads(question['options'])
+            processed.append(question)
+        return processed
+    
     @staticmethod
-    def delete_raw(db, question_id):
-        """Elimina una pregunta (operación cruda)"""
-        QuestionModel._execute_update(
-            db,
-            'DELETE FROM question WHERE id = ?', 
-            (question_id,)
-        )
-        return True
-
+    def update(db, question_id, **kwargs):
+        if not kwargs:
+            raise ValueError("No fields to update")
+        
+        fields = []
+        params = []
+        
+        if 'options' in kwargs:
+            kwargs['options'] = json.dumps(kwargs['options']) if kwargs['options'] else None
+        
+        for field, value in kwargs.items():
+            fields.append(f"{field} = ?")
+            params.append(value)
+        
+        params.append(question_id)
+        query = f"UPDATE questions SET {', '.join(fields)}, updated_at = CURRENT_TIMESTAMP WHERE id = ?"
+        QuestionModel._execute_update(db, query, params)
+    
     @staticmethod
-    def get_by_type_raw(db, tipo):
-        """Obtiene preguntas por tipo (datos crudos)"""
-        return QuestionModel._execute_query(
-            db,
-            'SELECT * FROM question WHERE tipo = ? ORDER BY pregunta',
-            (tipo,)
-        )
+    def delete(db, question_id):
+        QuestionModel._execute_update(db, 'DELETE FROM questions WHERE id = ?', (question_id,))
+    
+    @staticmethod
+    def reorder(db, user_id, new_order):
+        """Updates display order for multiple questions"""
+        try:
+            db.execute('BEGIN TRANSACTION')
+            for order, question_id in enumerate(new_order, 1):
+                db.execute(
+                    'UPDATE questions SET display_order = ? WHERE id = ? AND user_id = ?',
+                    (order, question_id, user_id))
+            db.commit()
+        except sqlite3.Error as e:
+            db.rollback()
+            raise e

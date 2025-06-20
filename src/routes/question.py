@@ -11,13 +11,13 @@ def create_question_routes():
         controller = QuestionController(db)
 
         data = request.get_json()
-        required = ['user_id', 'question_id', 'question_text', 'question_type']
+        required = ['apiary_id', 'question_id', 'question_text', 'question_type']
         if not all(field in data for field in required):
             return jsonify({'error': 'Missing required fields'}), 400
 
         try:
             question_id = controller.create_question(
-                data['user_id'],
+                data['apiary_id'],
                 data['question_id'],
                 data['question_text'],
                 data['question_type'],
@@ -43,13 +43,13 @@ def create_question_routes():
             return jsonify({'error': 'Question not found'}), 404
         return jsonify(question), 200
 
-    @question_bp.route('/users/<int:user_id>/questions', methods=['GET'])
-    def get_user_questions(user_id):
+    @question_bp.route('/apiaries/<int:apiary_id>/questions', methods=['GET'])
+    def get_apiary_questions(apiary_id):
         db = get_db()
         controller = QuestionController(db)
 
         active_only = request.args.get('active_only', 'true').lower() == 'true'
-        questions = controller.get_user_questions(user_id, active_only)
+        questions = controller.get_apiary_questions(apiary_id, active_only)
         return jsonify(questions), 200
 
     @question_bp.route('/questions/<question_id>', methods=['PUT'])
@@ -78,8 +78,8 @@ def create_question_routes():
         except Exception as e:
             return jsonify({'error': str(e)}), 400
 
-    @question_bp.route('/users/<int:user_id>/questions/reorder', methods=['PUT'])
-    def reorder_questions(user_id):
+    @question_bp.route('/apiaries/<int:apiary_id>/questions/reorder', methods=['PUT'])
+    def reorder_questions(apiary_id):
         db = get_db()
         controller = QuestionController(db)
 
@@ -87,7 +87,7 @@ def create_question_routes():
             return jsonify({'error': 'Order list required'}), 400
 
         try:
-            controller.reorder_questions(user_id, request.json['order'])
+            controller.reorder_questions(apiary_id, request.json['order'])
             return jsonify({'message': 'Questions reordered'}), 200
         except Exception as e:
             return jsonify({'error': str(e)}), 400

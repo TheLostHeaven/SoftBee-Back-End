@@ -19,4 +19,4 @@ secretKey = os.environ["SECRET_KEY"]
 algorithm = os.environ["ALGORITHM"]
 expiresTokenEmail = int(os.environ["EXPIRES_TOKEN_EMAIL"])
 expiresTokenSession = int(os.environ["EXPIRES_TOKEN_SESSION"]) 
-jwtKey = os.environ["JTW_KEY"]
+jwtKey = os.environ["JWT_KEY"]

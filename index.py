@@ -1,13 +1,9 @@
-from app import app_create
+from app import create_app
 import os
 
-from src.database.db import get_db, close_db, init_database
-
-
-app = app_create()
+app = create_app()
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
-    app = app_create()
     app.run(host='0.0.0.0', port=port)
     #app.run(debug=True)

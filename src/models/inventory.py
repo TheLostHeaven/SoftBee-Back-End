@@ -1,3 +1,5 @@
+import sqlite3
+
 class InventoryModel:
     @staticmethod
     def init_db(db):
@@ -5,88 +7,129 @@ class InventoryModel:
             db.execute('''
                 CREATE TABLE IF NOT EXISTS inventory (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER NOT NULL,
                     item_name TEXT NOT NULL,
                     quantity INTEGER NOT NULL DEFAULT 0,
-                    unity TEXT NOT NULL DEFAULT 'unit',
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    unit TEXT NOT NULL DEFAULT 'unit',
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
                 )
             ''')
+            db.execute('CREATE INDEX IF NOT EXISTS idx_inventory_user_id ON inventory(user_id)')
             db.execute('CREATE INDEX IF NOT EXISTS idx_inventory_item_name ON inventory(item_name)')
             db.commit()
-        except Exception as e:
+        except sqlite3.Error as e:
             db.rollback()
             raise e
-        
+
     @staticmethod
     def _execute_query(db, query, params=()):
-        """Executes a query and returns results"""
-        return db.execute(query, params).fetchall()
+        """Executes a query and returns results as list of dicts"""
+        cursor = db.execute(query, params)
+        columns = [col[0] for col in cursor.description]
+        return [dict(zip(columns, row)) for row in cursor.fetchall()]
+
+    @staticmethod
+    def _execute_single_query(db, query, params=()):
+        """Executes a query and returns a single result as dict"""
+        cursor = db.execute(query, params)
+        row = cursor.fetchone()
+        if row:
+            columns = [col[0] for col in cursor.description]
+            return dict(zip(columns, row))
+        return None
+
     @staticmethod
     def _execute_update(db, query, params=()):
         """Executes an update and commits"""
         cursor = db.execute(query, params)
         db.commit()
         return cursor
+
     @staticmethod
-    def get_all_raw(db):
-        """Gets all inventory items (raw data)"""
-        return InventoryModel._execute_query(db, 'SELECT * FROM inventory ORDER BY id')
-    @staticmethod
-    def get_by_id_raw(db, item_id):
-        """Gets an inventory item by ID (raw data)"""
+    def get_all(db, user_id):
+        """Gets all inventory items for a user"""
         return InventoryModel._execute_query(
-            db, 
-            'SELECT * FROM inventory WHERE id = ?', 
-            (item_id,)
-        )[0] if InventoryModel._execute_query(db, 'SELECT 1 FROM inventory WHERE id = ?', (item_id,)) else None
+            db,
+            'SELECT * FROM inventory WHERE user_id = ? ORDER BY id',
+            (user_id,)
+        )
+
     @staticmethod
-    def create_raw(db, item_name, quantity=0, unity='unit'):
-        """Creates a new inventory item (raw operation)"""
+    def get_by_id(db, item_id):
+        """Gets an inventory item by ID"""
+        return InventoryModel._execute_single_query(
+            db,
+            'SELECT * FROM inventory WHERE id = ?',
+            (item_id,)
+        )
+
+    @staticmethod
+    def create(db, user_id, item_name, quantity=0, unit='unit'):
+        """Creates a new inventory item"""
         cursor = InventoryModel._execute_update(
             db,
-            'INSERT INTO inventory (item_name, quantity, unity) '
-            'VALUES (?, ?, ?)',
-            (item_name, quantity, unity)
+            'INSERT INTO inventory (user_id, item_name, quantity, unit) VALUES (?, ?, ?, ?)',
+            (user_id, item_name, quantity, unit)
         )
         return cursor.lastrowid
+
     @staticmethod
-    def update_raw(db, item_id, item_name=None, quantity=None, unity=None):
-        """Updates an existing inventory item (raw operation)"""
+    def update(db, item_id, item_name=None, quantity=None, unit=None):
+        """Updates an existing inventory item"""
         fields = []
         params = []
+
         if item_name is not None:
-            fields.append('item_name = ?')
+            fields.append("item_name = ?")
             params.append(item_name)
         if quantity is not None:
-            fields.append('quantity = ?')
+            fields.append("quantity = ?")
             params.append(quantity)
-        if unity is not None:
-            fields.append('unity = ?')
-            params.append(unity)
-        
+        if unit is not None:
+            fields.append("unit = ?")
+            params.append(unit)
+
         if not fields:
-            raise ValueError("At least one field must be updated")
-        
+            raise ValueError("No fields to update")
+
         params.append(item_id)
-        query = f'UPDATE inventory SET {", ".join(fields)} WHERE id = ?'
+        query = f"UPDATE inventory SET {', '.join(fields)}, updated_at = CURRENT_TIMESTAMP WHERE id = ?"
         InventoryModel._execute_update(db, query, params)
+
     @staticmethod
-    def delete_raw(db, item_id):
-        """Deletes an inventory item (raw operation)"""
-        if not InventoryModel._execute_query(db, 'SELECT 1 FROM inventory WHERE id = ?', (item_id,)):
-            raise ValueError("Item not found")
-        
-        db.execute('DELETE FROM inventory WHERE id = ?', (item_id,))
-        try:
-            db.commit()
-        except Exception as e:
-            db.rollback()
-            raise e
+    def delete(db, item_id):
+        """Deletes an inventory item"""
+        InventoryModel._execute_update(
+            db,
+            'DELETE FROM inventory WHERE id = ?',
+            (item_id,)
+        )
+
     @staticmethod
-    def get_item_by_name(db, item_name):
-        """Gets an inventory item by name (raw operation)"""
+    def delete_by_name(db, user_id, item_name):
+        """Deletes inventory items matching the name for a user"""
+        InventoryModel._execute_update(
+            db,
+            'DELETE FROM inventory WHERE user_id = ? AND item_name = ?',
+            (user_id, item_name)
+        )
+
+    @staticmethod
+    def get_by_name(db, user_id, item_name):
+        """Gets inventory items by name for a user"""
         return InventoryModel._execute_query(
-            db, 
-            'SELECT * FROM inventory WHERE item_name = ?', 
-            (item_name,)
+            db,
+            'SELECT * FROM inventory WHERE user_id = ? AND item_name LIKE ?',
+            (user_id, f"%{item_name}%")
+        )
+
+    @staticmethod
+    def adjust_quantity(db, item_id, amount):
+        """Adjusts inventory quantity by amount (positive or negative)"""
+        InventoryModel._execute_update(
+            db,
+            'UPDATE inventory SET quantity = quantity + ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+            (amount, item_id)
         )

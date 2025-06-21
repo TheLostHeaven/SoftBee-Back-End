@@ -10,10 +10,7 @@ def create_app(testing=False):
     app.config.from_object(Config)
     CORS(app)
     
-    # Configuración de la base de datos
-    app.config['DATABASE'] = os.path.join(app.instance_path, 'app.db')
-
-    # Inicializa la base de datos (registra close y crea tablas si es necesario)
+    
     from src.database.db import init_app
     init_app(app)
 

@@ -3,16 +3,18 @@ import os
 from flask import g, current_app
 
 def get_db():
-    """Obtiene o crea una conexión a la base de datos"""
+    """Obtiene o crea una conexión a la base de datos persistente"""
     if 'db' not in g:
-        # Asegura que el directorio instance exista
-        os.makedirs(current_app.instance_path, exist_ok=True)
+        # Usamos /tmp que es persistente en Render
+        db_dir = '/tmp/beekeeper_db'  # Directorio especial para tu app
+        os.makedirs(db_dir, exist_ok=True)
         
-        # Conecta a la base de datos con configuración para multihilo
-        db_path = os.path.join(current_app.instance_path, 'app.db')
+        db_path = os.path.join(db_dir, 'app.db')
+        
         g.db = sqlite3.connect(db_path, check_same_thread=False)
         g.db.row_factory = sqlite3.Row
         g.db.execute("PRAGMA foreign_keys = ON")
+        g.db.execute("PRAGMA journal_mode=WAL")  # Mejor rendimiento para múltiples conexiones
         
     return g.db
 
@@ -24,8 +26,8 @@ def close_db(e=None):
 
 def init_app(app):
     """Registra las funciones con la aplicación Flask"""
-    # Configura la ruta de la base de datos
-    app.config['DATABASE'] = os.path.join(app.instance_path, 'app.db')
+    # Configura la ruta de la base de datos en /tmp
+    app.config['DATABASE'] = '/tmp/beekeeper_db/app.db'
     
     # Registra la función de limpieza
     app.teardown_appcontext(close_db)
@@ -42,7 +44,7 @@ def init_app(app):
         from src.models.questions import QuestionModel
         from src.models.inventory import InventoryModel
         
-    #     # Crea todas las tablas
+        # Crea todas las tablas
         UserModel.init_db(db)
         ApiaryModel.init_db(db)
         QuestionModel.init_db(db)

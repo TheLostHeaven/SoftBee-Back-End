@@ -54,7 +54,7 @@ def create_auth_routes():
                 nombre=cleaned_data['nombre'],
                 username=cleaned_data['username'],
                 email=cleaned_data['email'],
-                phone=cleaned_data['phone'],
+                phone=cleaned_data['phone'],  # Ahora es string garantizado
                 password=generate_password_hash(cleaned_data['password'])
             )
             

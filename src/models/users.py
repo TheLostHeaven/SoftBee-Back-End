@@ -10,7 +10,7 @@ class UserModel:
                 CREATE TABLE IF NOT EXISTS users (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     nombre TEXT NOT NULL,
-                    username TEXT NOT NULL UNIQUE,
+                    username TEXT UNIQUE NOT NULL CHECK(username = trim(username)),
                     email TEXT NOT NULL UNIQUE,
                     phone INTEGER NOT NULL,
                     password TEXT NOT NULL,

@@ -14,7 +14,7 @@ def get_db():
         g.db = sqlite3.connect(db_path, check_same_thread=False)
         g.db.row_factory = sqlite3.Row
         g.db.execute("PRAGMA foreign_keys = ON")
-        g.db.execute("PRAGMA journal_mode=WAL")  # Mejor rendimiento para múltiples conexiones
+        g.db.execute("PRAGMA journal_mode=WAL")
         
     return g.db
 

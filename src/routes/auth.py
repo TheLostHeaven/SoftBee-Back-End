@@ -9,23 +9,30 @@ def create_auth_routes():
     auth_bp = Blueprint('auth_routes', __name__)
 
     def clean_user_input(data):
-        """Limpia los espacios en blanco de los inputs y valida campos requeridos"""
+        """Limpia y normaliza los datos de entrada de manera segura"""
+        def clean_field(value):
+            if value is None:
+                return ''
+            if isinstance(value, (int, float)):
+                return str(value).strip()
+            return str(value).strip()
+        
         cleaned = {
-            'nombre': data.get('nombre', '').strip(),
-            'username': data.get('username', '').strip().lower(),  # Normaliza a minúsculas
-            'email': data.get('email', '').strip().lower(),
-            'phone': data.get('phone', '').strip(),
-            'password': data.get('password', '').strip()
+            'nombre': clean_field(data.get('nombre')),
+            'username': clean_field(data.get('username')).lower(),
+            'email': clean_field(data.get('email')).lower(),
+            'phone': clean_field(data.get('phone')),
+            'password': clean_field(data.get('password'))
         }
         
-        # Validación de campos requeridos
+        # Validaciones
         if not cleaned['username']:
             raise ValueError('Username is required')
         if not cleaned['password']:
             raise ValueError('Password is required')
         if not cleaned['email']:
             raise ValueError('Email is required')
-            
+        
         return cleaned
 
     # Register

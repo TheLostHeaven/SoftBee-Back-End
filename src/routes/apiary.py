@@ -20,13 +20,23 @@ def create_apiary_routes():
         db = get_db()
         controller = ApiaryController(db)
         data = request.get_json()
+        
         if 'user_id' not in data or 'name' not in data:
             return jsonify({'error': 'User ID and name are required'}), 400
+
+        # Validar que el usuario exista
+        cursor = db.cursor()
+        cursor.execute("SELECT id FROM users WHERE id = ?", (data['user_id'],))
+        user = cursor.fetchone()
+        
+        if user is None:  # ¡El usuario no existe!
+            return jsonify({'error': 'User ID does not exist'}), 404  # 404 Not Found
+
         try:
             apiary_id = controller.create_apiary(
                 data['user_id'],
                 data['name'],
-                data.get('location')
+                data.get('location')  # .get() para campos opcionales
             )
             return jsonify({'id': apiary_id}), 201
         except Exception as e:

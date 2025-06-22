@@ -25,26 +25,25 @@ class PasswordResetTokenModel(BaseModel):
         db.commit()
 
     @staticmethod
-
-    def create_token(db, user_id, expires_minutes=30):  # Cambiar nombre del parámetro
+    def create_token(db, user_id, expires_minutes=30):
         """Genera un nuevo token de recuperación"""
         try:
             token = secrets.token_urlsafe(64)
-            expires_at = datetime.utcnow() + timedelta(minutes=expires_minutes)  # Usar el nuevo nombre
+            expires_at = datetime.utcnow() + timedelta(minutes=expires_minutes)
             
-            # Invalidar tokens previos (implementación correcta)
-            with db.cursor() as cursor:
-                # Invalidar tokens previos
-                cursor.execute(
-                    'UPDATE password_reset_tokens SET used = 1 WHERE user_id = ? AND used = 0',
-                    (user_id,)
-                )
-                
-                # Insertar nuevo token
-                cursor.execute(
-                    'INSERT INTO password_reset_tokens (user_id, token, expires_at) VALUES (?, ?, ?)',
-                    (user_id, token, expires_at)
-                )
+            cursor = db.cursor()
+            
+            # Invalidar tokens previos
+            cursor.execute(
+                'UPDATE password_reset_tokens SET used = 1 WHERE user_id = ? AND used = 0',
+                (user_id,)
+            )
+            
+            # Insertar nuevo token
+            cursor.execute(
+                'INSERT INTO password_reset_tokens (user_id, token, expires_at) VALUES (?, ?, ?)',
+                (user_id, token, expires_at)
+            )
             
             db.commit()
             return token
@@ -52,6 +51,10 @@ class PasswordResetTokenModel(BaseModel):
         except Exception as e:
             db.rollback()
             raise RuntimeError(f"Error creating token: {str(e)}")
+        finally:
+            # Cerrar el cursor explícitamente
+            if cursor:
+                cursor.close()
 
     @staticmethod
     def validate_token(db, token):

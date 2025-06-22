@@ -64,11 +64,6 @@ def create_user_routes():
         
         return jsonify(user), 200
 
-        user.pop('password', None)
-        user.pop('reset_token', None)
-        user.pop('reset_token_expiry', None)
-        return jsonify(user), 200
-
     @user_bp.route('/users/<int:user_id>', methods=['PUT'])
     def update_user(user_id):
         controller = get_controller()

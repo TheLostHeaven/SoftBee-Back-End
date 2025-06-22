@@ -17,6 +17,7 @@ class UserModel(BaseModel):
                 email TEXT NOT NULL UNIQUE,
                 phone TEXT NOT NULL,
                 password TEXT NOT NULL,
+                profile_picture TEXT DEFAULT 'default_profile.jpg',
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                 updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
             )
@@ -154,3 +155,13 @@ class UserModel(BaseModel):
             ''',
             (new_password, user_id)
         )
+
+    # Nuevo método para actualizar la foto de perfil
+    @staticmethod
+    def update_profile_picture(db, user_id, filename):
+        UserModel._execute_update(
+            db,
+            'UPDATE users SET profile_picture = ? WHERE id = ?',
+            (filename, user_id)
+        )
+

@@ -32,4 +32,7 @@ class UserController:
         """Deletes a user"""
         self.model.delete(self.db, user_id)
 
+    def update_profile_picture(self, user_id, filename):
+        """Updates user's profile picture"""
+        self.model.update_profile_picture(self.db, user_id, filename)
 

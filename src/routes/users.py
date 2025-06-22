@@ -1,6 +1,7 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, current_app, g
 from ..controllers.users import UserController
 from src.database.db import get_db
+from src.middleware.jwt import jwt_required
 
 def create_user_routes():
     user_bp = Blueprint('user_routes', __name__)
@@ -50,6 +51,19 @@ def create_user_routes():
         if not user:
             return jsonify({'error': 'User not found'}), 404
 
+        # Limpiar campos sensibles
+        user.pop('password', None)
+        user.pop('reset_token', None)
+        user.pop('reset_token_expiry', None)
+        
+        # Añadir URL de la foto de perfil
+        file_handler = current_app.file_handler
+        user['profile_picture_url'] = file_handler.get_profile_picture_url(
+            user.get('profile_picture', 'default_profile.jpg')
+        )
+        
+        return jsonify(user), 200
+
         user.pop('password', None)
         user.pop('reset_token', None)
         user.pop('reset_token_expiry', None)
@@ -77,5 +91,37 @@ def create_user_routes():
             return jsonify({'message': 'User deleted'}), 200
         except Exception as e:
             return jsonify({'error': str(e)}), 400
+
+    # Endpoint para actualizar foto de perfil
+    @user_bp.route('/users/<int:user_id>/profile-picture', methods=['PUT'])
+    @jwt_required
+    def update_profile_picture(user_id):
+        # Verificar que el usuario autenticado coincide
+        if g.current_user_id != user_id:
+            return jsonify({'error': 'Unauthorized'}), 403
+
+        if 'file' not in request.files:
+            return jsonify({'error': 'No file part'}), 400
+            
+        file = request.files['file']
+        if file.filename == '':
+            return jsonify({'error': 'No selected file'}), 400
+        
+        # Usar el manejador de archivos
+        file_handler = current_app.file_handler
+        filename = file_handler.save_profile_picture(file, user_id)
+        
+        if not filename:
+            return jsonify({'error': 'Invalid file type'}), 400
+        
+        # Actualizar en la base de datos
+        controller = get_controller()
+        controller.update_profile_picture(user_id, filename)
+        
+        return jsonify({
+            'profile_picture': file_handler.get_profile_picture_url(filename)
+        }), 200
+
+
 
     return user_bp

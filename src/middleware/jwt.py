@@ -1,6 +1,28 @@
-from flask import current_app
+from flask import request, current_app, g
 import jwt
 from datetime import datetime, timedelta
+
+def jwt_required(f):
+    """Decorator para proteger rutas con JWT"""
+    def decorated_function(*args, **kwargs):
+        token = None
+        
+        # Obtener token de los headers
+        if 'Authorization' in request.headers:
+            token = request.headers['Authorization'].split(" ")[1]
+        
+        if not token:
+            return {'error': 'Token is missing'}, 401
+        
+        # Verificar token
+        payload = verify_token(token)
+        if not payload:
+            return {'error': 'Invalid or expired token'}, 401
+        
+        # Almacenar información del usuario en el contexto global
+        g.current_user_id = payload['sub']
+        return f(*args, **kwargs)
+    return decorated_function
 
 def generate_token(user_id, user_data=None):
     """Genera un token JWT"""

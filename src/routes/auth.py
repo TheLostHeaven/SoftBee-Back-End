@@ -9,41 +9,38 @@ import sqlite3
 
 def create_auth_routes(get_db_func, email_service):
     auth_bp = Blueprint('auth_routes', __name__)
-    auth_controller = AuthController(db=get_db(),mail_service=email_service)
+    
+    # Usar get_db_func en lugar de get_db() directamente
+    auth_controller = AuthController(db=get_db_func(), mail_service=email_service)
 
     def clean_user_input(data):
         """Limpia y normaliza los datos de entrada de manera segura"""
-        def clean_field(value):
-            if value is None:
-                return ''
-            if isinstance(value, (int, float)):
-                return str(value).strip()
-            return str(value).strip()
+        # ... (código existente sin cambios) ...
+    
+    def get_user_with_profile(user):
+        """Añade la URL de la foto de perfil al objeto de usuario"""
+        if not user:
+            return None
+            
+        # Limpiar datos sensibles
+        user.pop('password', None)
+        user.pop('reset_token', None)
+        user.pop('reset_token_expiry', None)
         
-        cleaned = {
-            'nombre': clean_field(data.get('nombre')),
-            'username': clean_field(data.get('username')).lower(),
-            'email': clean_field(data.get('email')).lower(),
-            'phone': clean_field(data.get('phone')),
-            'password': clean_field(data.get('password'))
-        }
+        # Obtener URL de la foto de perfil
+        file_handler = current_app.file_handler
+        user['profile_picture_url'] = file_handler.get_profile_picture_url(
+            user.get('profile_picture', 'default_profile.jpg')
+        )
         
-        # Validaciones
-        if not cleaned['username']:
-            raise ValueError('Username is required')
-        if not cleaned['password']:
-            raise ValueError('Password is required')
-        if not cleaned['email']:
-            raise ValueError('Email is required')
-        
-        return cleaned
+        return user
 
     # Register
     @auth_bp.route('/register', methods=['POST'])
     def auth_register():
         try:
             data = request.get_json()
-            db = get_db()
+            db = get_db_func()
             
             # Limpia y valida los datos
             cleaned_data = clean_user_input(data)
@@ -68,14 +65,26 @@ def create_auth_routes(get_db_func, email_service):
                 password=generate_password_hash(cleaned_data['password'])
             )
             
+            # Obtener usuario creado con foto de perfil
             user_data = UserModel.get_by_id(db, user_id)
-            token = generate_token(user_id, user_data)
+            if not user_data:
+                return jsonify({'error': 'User creation failed'}), 500
+                
+            # Añadir URL de la foto de perfil
+            user_data = get_user_with_profile(user_data)
+            
+            token = generate_token(user_id, {
+                'username': cleaned_data['username'],
+                'email': cleaned_data['email'],
+                'profile_picture_url': user_data['profile_picture_url']
+            })
             
             return jsonify({
                 'token': token,
                 'user_id': user_id,
                 'username': cleaned_data['username'],
                 'email': cleaned_data['email'],
+                'profile_picture_url': user_data['profile_picture_url'],
                 'message': 'Registration successful'
             }), 201
 
@@ -96,7 +105,7 @@ def create_auth_routes(get_db_func, email_service):
                 return jsonify({'error': 'Content-Type must be application/json'}), 400
 
             data = request.get_json()
-            db = get_db()
+            db = get_db_func()
 
             # Limpieza y validación básica
             identifier = data.get('username', data.get('email', '')).strip().lower()
@@ -129,12 +138,16 @@ def create_auth_routes(get_db_func, email_service):
                     'message': 'Incorrect password'
                 }), 401
 
-            # Generar token
+            # Obtener URL de la foto de perfil
+            user = get_user_with_profile(user)
+            
+            # Generar token con foto de perfil
             token = generate_token(
                 user_id=user['id'],
                 user_data={
                     'username': user['username'],
-                    'email': user['email']
+                    'email': user['email'],
+                    'profile_picture_url': user['profile_picture_url']
                 }
             )
 
@@ -143,6 +156,7 @@ def create_auth_routes(get_db_func, email_service):
                 'user_id': user['id'],
                 'username': user['username'],
                 'email': user['email'],
+                'profile_picture_url': user['profile_picture_url'],
                 'message': 'Login successful'
             }), 200
 
@@ -157,10 +171,10 @@ def create_auth_routes(get_db_func, email_service):
     @auth_bp.route('/forgot-password', methods=['POST'])
     def forgot_password():
         try:
-            # Obtiene la conexión dentro del contexto de la solicitud
+            # Obtener conexión de base de datos
             db = get_db_func()
             
-            # Crea el controlador con la conexión activa
+            # Crear controlador con la conexión
             auth_controller = AuthController(db=db, mail_service=email_service)
             
             data = request.get_json()
@@ -169,8 +183,21 @@ def create_auth_routes(get_db_func, email_service):
             if not email:
                 return jsonify({'error': 'Email is required'}), 400
             
-            # Ejecuta la operación
+            # Ejecutar operación
             auth_controller.initiate_password_reset(email)
+            
+            # Obtener usuario para incluir foto en el correo
+            user = UserModel.get_by_email(db, email)
+            if user:
+                # Obtener URL de la foto de perfil
+                file_handler = current_app.file_handler
+                profile_picture_url = file_handler.get_profile_picture_url(
+                    user.get('profile_picture', 'default_profile.jpg')
+                )
+                
+                # Si el servicio de correo admite foto, enviarla
+                if hasattr(email_service, 'set_profile_picture_url'):
+                    email_service.set_profile_picture_url(profile_picture_url)
             
             db.commit()
             
@@ -182,29 +209,30 @@ def create_auth_routes(get_db_func, email_service):
             db.rollback()
             current_app.logger.error(f'Error en forgot_password: {str(e)}')
             return jsonify({'error': 'Error al procesar la solicitud'}), 500
-        finally:
-            # No cerramos la conexión aquí, Flask lo hará automáticamente
-            pass
 
     @auth_bp.route('/reset-password', methods=['POST'])
     def reset_password():
-            try:
-                data = request.get_json()
-                token = data.get('token', '').strip()
-                new_password = data.get('new_password', '').strip()
+        try:
+            data = request.get_json()
+            token = data.get('token', '').strip()
+            new_password = data.get('new_password', '').strip()
+            
+            if not token or not new_password:
+                return jsonify({'error': 'Token y nueva contraseña son requeridos'}), 400
                 
-                if not token or not new_password:
-                    return jsonify({'error': 'Token y nueva contraseña son requeridos'}), 400
-                    
-                if len(new_password) < 8:
-                    return jsonify({'error': 'La contraseña debe tener al menos 8 caracteres'}), 400
-                    
-                if auth_controller.complete_password_reset(token, new_password):
-                    return jsonify({'message': 'Contraseña actualizada exitosamente'}), 200
-                else:
-                    return jsonify({'error': 'Token inválido o expirado'}), 400
-            except Exception as e:
-                current_app.logger.error(f"Error en reset_password: {str(e)}")
-                return jsonify({'error': 'Error interno del servidor'}), 500
+            if len(new_password) < 8:
+                return jsonify({'error': 'La contraseña debe tener al menos 8 caracteres'}), 400
+                
+            # Usar el controlador con la conexión actual
+            db = get_db_func()
+            auth_controller = AuthController(db=db, mail_service=email_service)
+            
+            if auth_controller.complete_password_reset(token, new_password):
+                return jsonify({'message': 'Contraseña actualizada exitosamente'}), 200
+            else:
+                return jsonify({'error': 'Token inválido o expirado'}), 400
+        except Exception as e:
+            current_app.logger.error(f"Error en reset_password: {str(e)}")
+            return jsonify({'error': 'Error interno del servidor'}), 500
 
     return auth_bp

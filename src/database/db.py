@@ -1,22 +1,43 @@
 import sqlite3
 import os
 from flask import g, current_app
+import psycopg2
 
 def get_db():
-    """Obtiene o crea una conexión a la base de datos persistente"""
     if 'db' not in g:
-        # Usamos /tmp que es persistente en Render
-        db_dir = '/tmp/beekeeper_db'  # Directorio especial para tu app
-        os.makedirs(db_dir, exist_ok=True)
+        if 'RENDER' in os.environ:
+            # PostgreSQL en producción
+            g.db = psycopg2.connect(
+                host=os.getenv('DB_HOST'),
+                port=os.getenv('DB_PORT'),
+                dbname=os.getenv('DB_NAME'),
+                user=os.getenv('DB_USER'),
+                password=os.getenv('DB_PASSWORD')
+            )
+        else:
+            # SQLite en desarrollo
+            g.db = sqlite3.connect('instance/database.db')
+            g.db.row_factory = sqlite3.Row
+    return g.db 
+
+
+
+
+# def get_db():
+#     """Obtiene o crea una conexión a la base de datos persistente"""
+#     if 'db' not in g:
+#         # Usamos /tmp que es persistente en Render
+#         db_dir = '/tmp/beekeeper_db'  # Directorio especial para tu app
+#         os.makedirs(db_dir, exist_ok=True)
         
-        db_path = os.path.join(db_dir, 'app.db')
+#         db_path = os.path.join(db_dir, 'app.db')
         
-        g.db = sqlite3.connect(db_path, check_same_thread=False)
-        g.db.row_factory = sqlite3.Row
-        g.db.execute("PRAGMA foreign_keys = ON")
-        g.db.execute("PRAGMA journal_mode=WAL")
+#         g.db = sqlite3.connect(db_path, check_same_thread=False)
+#         g.db.row_factory = sqlite3.Row
+#         g.db.execute("PRAGMA foreign_keys = ON")
+#         g.db.execute("PRAGMA journal_mode=WAL")
         
-    return g.db
+#     return g.db
 
 def close_db(e=None):
     """Cierra la conexión a la base de datos si existe"""

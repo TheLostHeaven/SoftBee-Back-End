@@ -57,12 +57,22 @@ class AuthController:
                 current_app.logger.info(f"Intento de reset para email no registrado: {email}")
                 return None
                 
-            # Generar token con expiración desde configuración
+            expires_minutes = current_app.config.get('EXPIRES_TOKEN_EMAIL', 15)
+            
+            # Convertir a entero si es necesario
+            if isinstance(expires_minutes, str):
+                try:
+                    expires_minutes = int(expires_minutes)
+                except ValueError:
+                    expires_minutes = 15
+                    
+            # Generar token
             token = PasswordResetTokenModel.create_token(
                 self.db, 
                 user['id'],
-                expires_minutes=current_app.config[15]
+                expires_minutes=expires_minutes
             )
+
             
             # Enviar correo
             if self.mail_service:

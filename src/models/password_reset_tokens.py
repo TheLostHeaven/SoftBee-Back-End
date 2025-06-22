@@ -14,10 +14,10 @@ class PasswordResetTokenModel(BaseModel):
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 user_id INTEGER NOT NULL,
                 token TEXT NOT NULL UNIQUE,
-                expires_at DATETIME NOT NULL,
-                used BOOLEAN DEFAULT FALSE,
+                expiration DATETIME NOT NULL,
+                used BOOLEAN NOT NULL DEFAULT 0,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+                FOREIGN KEY (user_id) REFERENCES users(id)
             )
         ''')
         db.execute('CREATE INDEX IF NOT EXISTS idx_reset_tokens_token ON password_reset_tokens(token)')
@@ -25,26 +25,33 @@ class PasswordResetTokenModel(BaseModel):
         db.commit()
 
     @staticmethod
-    def create_token(db, user_id, expiry_minutes=30):
+
+    def create_token(db, user_id, expires_minutes=30):  # Cambiar nombre del parámetro
         """Genera un nuevo token de recuperación"""
-        token = secrets.token_urlsafe(64)
-        expires_at = datetime.utcnow() + timedelta(minutes=expiry_minutes)
+        try:
+            token = secrets.token_urlsafe(64)
+            expires_at = datetime.utcnow() + timedelta(minutes=expires_minutes)  # Usar el nuevo nombre
+            
+            # Invalidar tokens previos (implementación correcta)
+            with db.cursor() as cursor:
+                # Invalidar tokens previos
+                cursor.execute(
+                    'UPDATE password_reset_tokens SET used = 1 WHERE user_id = ? AND used = 0',
+                    (user_id,)
+                )
+                
+                # Insertar nuevo token
+                cursor.execute(
+                    'INSERT INTO password_reset_tokens (user_id, token, expires_at) VALUES (?, ?, ?)',
+                    (user_id, token, expires_at)
+                )
+            
+            db.commit()
+            return token
         
-        # Invalidar tokens previos
-        PasswordResetTokenModel._execute_update(
-            db,
-            'UPDATE password_reset_tokens SET used = TRUE WHERE user_id = ?',
-            (user_id,)
-        )
-        
-        # Insertar nuevo token
-        PasswordResetTokenModel._execute_update(
-            db,
-            'INSERT INTO password_reset_tokens (user_id, token, expires_at) VALUES (?, ?, ?)',
-            (user_id, token, expires_at)
-        )
-        
-        return token
+        except Exception as e:
+            db.rollback()
+            raise RuntimeError(f"Error creating token: {str(e)}")
 
     @staticmethod
     def validate_token(db, token):

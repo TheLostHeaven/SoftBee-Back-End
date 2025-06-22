@@ -172,7 +172,6 @@ def create_auth_routes(get_db_func, email_service):
             # Ejecuta la operación
             auth_controller.initiate_password_reset(email)
             
-            # Asegúrate de que los cambios se guarden
             db.commit()
             
             return jsonify({

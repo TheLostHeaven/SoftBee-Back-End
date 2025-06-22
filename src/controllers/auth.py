@@ -3,7 +3,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from src.models.users import UserModel
 from flask import current_app
 from src.models.password_reset_tokens import PasswordResetTokenModel
-from config import front_end_url
+import sqlite3
 
 
 class AuthController:
@@ -45,20 +45,42 @@ class AuthController:
     def initiate_password_reset(self, email):
         """Inicia el proceso de recuperación de contraseña"""
         try:
+            # Validación del email
+            if not email or not isinstance(email, str):
+                raise ValueError("Email inválido")
+            
+            email = email.strip().lower()
+            
+            # Buscar usuario
             user = UserModel.get_by_email(self.db, email)
             if not user:
+                current_app.logger.info(f"Intento de reset para email no registrado: {email}")
                 return None
                 
-            token = PasswordResetTokenModel.create_token(self.db, user['id'])
+            # Generar token con expiración desde configuración
+            token = PasswordResetTokenModel.create_token(
+                self.db, 
+                user['id'],
+                expires_minutes=current_app.config['EXPIRES_TOKEN_EMAIL']
+            )
             
+            # Enviar correo
             if self.mail_service:
-                from flask import current_app
-                reset_url = f"{current_app.config.get(front_end_url, '')}/reset-password?token={token}"
-                self.mail_service.send_password_reset(email, token, reset_url)
+                reset_url = f"{current_app.config['FRONTEND_URL']}/reset-password?token={token}"
+                self.mail_service.send_password_reset(
+                    email=email,
+                    token=token,
+                    reset_url=reset_url
+                )
             
             return token
-        except Exception as e:
+            
+        except sqlite3.Error as db_error:
             self.db.rollback()
+            current_app.logger.error(f"Error de base de datos: {str(db_error)}")
+            raise
+        except Exception as e:
+            current_app.logger.error(f"Error inesperado: {str(e)}")
             raise
     
     def complete_password_reset(self, token, new_password):

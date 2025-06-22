@@ -14,10 +14,10 @@ class PasswordResetTokenModel(BaseModel):
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 user_id INTEGER NOT NULL,
                 token TEXT NOT NULL UNIQUE,
-                expiration DATETIME NOT NULL,
-                used BOOLEAN NOT NULL DEFAULT 0,
+                expires_at DATETIME NOT NULL,
+                used BOOLEAN DEFAULT FALSE,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (user_id) REFERENCES users(id)
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
             )
         ''')
         db.execute('CREATE INDEX IF NOT EXISTS idx_reset_tokens_token ON password_reset_tokens(token)')

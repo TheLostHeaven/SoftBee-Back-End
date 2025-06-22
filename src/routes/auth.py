@@ -3,9 +3,10 @@ from src.models.users import UserModel
 from src.database.db import get_db
 from werkzeug.security import generate_password_hash, check_password_hash
 from src.middleware.jwt import generate_token
+from src.controllers.auth import AuthController
 import sqlite3
 
-def create_auth_routes():
+def create_auth_routes(email_service):
     auth_bp = Blueprint('auth_routes', __name__)
 
     def clean_user_input(data):
@@ -149,5 +150,45 @@ def create_auth_routes():
         except Exception as e:
             current_app.logger.error(f'Unexpected error: {str(e)}')
             return jsonify({'error': 'Internal server error'}), 500
+        
+    # Forgot Password    
+    @auth_bp.route('/forgot-password', methods=['POST'])
+    def forgot_password():
+            try:
+                data = request.get_json()
+                email = data.get('email', '').strip().lower()
+                
+                if not email:
+                    return jsonify({'error': 'Email es requerido'}), 400
+                    
+                AuthController.initiate_password_reset(email)
+                
+                return jsonify({
+                    'message': 'Si el email está registrado, recibirás un correo'
+                }), 200
+            except Exception as e:
+                current_app.logger.error(f"Error en forgot_password: {str(e)}")
+                return jsonify({'error': 'Error interno del servidor'}), 500
+
+    @auth_bp.route('/reset-password', methods=['POST'])
+    def reset_password():
+            try:
+                data = request.get_json()
+                token = data.get('token', '').strip()
+                new_password = data.get('new_password', '').strip()
+                
+                if not token or not new_password:
+                    return jsonify({'error': 'Token y nueva contraseña son requeridos'}), 400
+                    
+                if len(new_password) < 8:
+                    return jsonify({'error': 'La contraseña debe tener al menos 8 caracteres'}), 400
+                    
+                if AuthController.complete_password_reset(token, new_password):
+                    return jsonify({'message': 'Contraseña actualizada exitosamente'}), 200
+                else:
+                    return jsonify({'error': 'Token inválido o expirado'}), 400
+            except Exception as e:
+                current_app.logger.error(f"Error en reset_password: {str(e)}")
+                return jsonify({'error': 'Error interno del servidor'}), 500
 
     return auth_bp

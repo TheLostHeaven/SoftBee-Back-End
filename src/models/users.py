@@ -1,31 +1,55 @@
-import sqlite3
+# src/models/user.py
+from werkzeug.security import generate_password_hash, check_password_hash
+from .base_model import BaseModel
 from datetime import datetime, timedelta
 
-class UserModel:
+class UserModel(BaseModel):
+    """Modelo para manejo de usuarios"""
+    
     @staticmethod
     def init_db(db):
-        """Creates the users table if it doesn't exist"""
-        try:
-            db.execute('''
-                CREATE TABLE IF NOT EXISTS users (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    nombre TEXT NOT NULL,
-                    username TEXT UNIQUE NOT NULL CHECK(username = trim(username)),
-                    email TEXT NOT NULL UNIQUE,
-                    phone INTEGER NOT NULL,
-                    password TEXT NOT NULL,
-                    reset_token TEXT,
-                    reset_token_expiry DATETIME,
-                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-                )
-            ''')
-            db.execute('CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)')
-            db.execute('CREATE INDEX IF NOT EXISTS idx_users_username ON users(username)')
-            db.commit()
-        except sqlite3.Error as e:
-            db.rollback()
-            raise e
+        """Inicializa la tabla de usuarios"""
+        db.execute('''
+            CREATE TABLE IF NOT EXISTS users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                nombre TEXT NOT NULL,
+                username TEXT UNIQUE NOT NULL CHECK(username = trim(username)),
+                email TEXT NOT NULL UNIQUE,
+                phone TEXT NOT NULL,
+                password TEXT NOT NULL,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        db.execute('CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)')
+        db.execute('CREATE INDEX IF NOT EXISTS idx_users_username ON users(username)')
+        db.commit()
+
+    @staticmethod
+    def create(db, nombre, username, email, phone, password):
+        """Crea un nuevo usuario"""
+        cursor = UserModel._execute_update(
+            db,
+            'INSERT INTO users (nombre, username, email, phone, password) VALUES (?, ?, ?, ?, ?)',
+            (nombre, username.lower(), email.lower(), str(phone), generate_password_hash(password))
+        )
+        return cursor.lastrowid
+
+    @staticmethod
+    def get_by_email(db, email):
+        """Obtiene usuario por email"""
+        result = UserModel._execute_query(
+            db,
+            'SELECT * FROM users WHERE email = ?',
+            (email.lower(),)
+        )
+        return result[0] if result else None
+
+    @staticmethod
+    def verify_password(db, user_id, password):
+        """Verifica la contraseña del usuario"""
+        user = UserModel.get_by_id(db, user_id)
+        return user and check_password_hash(user['password'], password)
 
     @staticmethod
     def _execute_query(db, query, params=()):

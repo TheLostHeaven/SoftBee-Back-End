@@ -43,6 +43,7 @@ def init_app(app):
         from src.models.apiary_access import ApiaryAccessModel
         from src.models.questions import QuestionModel
         from src.models.inventory import InventoryModel
+        from src.models.password_reset_tokens import PasswordResetTokenModel
         
         # Crea todas las tablas
         UserModel.init_db(db)
@@ -52,4 +53,5 @@ def init_app(app):
         BeehiveModel.init_db(db)
         InspectionModel.init_db(db)
         ApiaryAccessModel.init_db(db)
+        PasswordResetTokenModel.init_db(db)
         db.commit()

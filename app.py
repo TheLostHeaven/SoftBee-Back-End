@@ -1,5 +1,7 @@
 from flask import Flask
 from flask_cors import CORS
+from flask_mail import Mail
+from src.utils.email_service import EmailService
 import os
 #from src.routes.users import user_bp
 
@@ -9,6 +11,8 @@ def create_app(testing=False):
     app = Flask(__name__, instance_relative_config=True)
     app.config.from_object(Config)
     CORS(app)
+    mail = Mail(app)
+    email_service = EmailService(mail)
     
     
     from src.database.db import init_app
@@ -27,6 +31,6 @@ def create_app(testing=False):
     app.register_blueprint(create_inventory_routes(), url_prefix='/api')
     app.register_blueprint(create_question_routes(), url_prefix='/api')
     app.register_blueprint(create_user_routes(), url_prefix='/api')
-    app.register_blueprint(create_auth_routes(), url_prefix='/api')
+    app.register_blueprint(create_auth_routes(email_service), url_prefix='/api')
 
     return app

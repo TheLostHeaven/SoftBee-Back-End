@@ -7,7 +7,7 @@ from src.controllers.auth import AuthController
 from src.utils.email_service import EmailService
 import sqlite3
 
-def create_auth_routes(email_service):
+def create_auth_routes(get_db_func, email_service):
     auth_bp = Blueprint('auth_routes', __name__)
     auth_controller = AuthController(db=get_db(),mail_service=email_service)
 
@@ -156,21 +156,36 @@ def create_auth_routes(email_service):
     # Forgot Password    
     @auth_bp.route('/forgot-password', methods=['POST'])
     def forgot_password():
-            try:
-                data = request.get_json()
-                email = data.get('email', '').strip().lower()
-                
-                if not email:
-                    return jsonify({'error': 'Email es requerido'}), 400
-                    
-                auth_controller.initiate_password_reset(email)
-                
-                return jsonify({
-                    'message': 'Si el email está registrado, recibirás un correo'
-                }), 200
-            except Exception as e:
-                current_app.logger.error(f"Error en forgot_password: {str(e)}")
-                return jsonify({'error': 'Error interno del servidor'}), 500
+        try:
+            # Obtiene la conexión dentro del contexto de la solicitud
+            db = get_db_func()
+            
+            # Crea el controlador con la conexión activa
+            auth_controller = AuthController(db=db, mail_service=email_service)
+            
+            data = request.get_json()
+            email = data.get('email', '').strip().lower()
+            
+            if not email:
+                return jsonify({'error': 'Email is required'}), 400
+            
+            # Ejecuta la operación
+            auth_controller.initiate_password_reset(email)
+            
+            # Asegúrate de que los cambios se guarden
+            db.commit()
+            
+            return jsonify({
+                'message': 'Si el email está registrado, recibirás un correo'
+            }), 200
+            
+        except Exception as e:
+            db.rollback()
+            current_app.logger.error(f'Error en forgot_password: {str(e)}')
+            return jsonify({'error': 'Error al procesar la solicitud'}), 500
+        finally:
+            # No cerramos la conexión aquí, Flask lo hará automáticamente
+            pass
 
     @auth_bp.route('/reset-password', methods=['POST'])
     def reset_password():

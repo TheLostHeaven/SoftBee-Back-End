@@ -44,20 +44,22 @@ class AuthController:
         
     def initiate_password_reset(self, email):
         """Inicia el proceso de recuperación de contraseña"""
-        user = UserModel.get_by_email(self.db, email)
-        if not user:
-            # Por seguridad, no revelamos si el email existe
-            return None
+        try:
+            user = UserModel.get_by_email(self.db, email)
+            if not user:
+                return None
+                
+            token = PasswordResetTokenModel.create_token(self.db, user['id'])
             
-        # Genera token seguro
-        token = PasswordResetTokenModel.create_token(self.db, user['id'])
-        
-        # Envía el correo electrónico (si hay servicio configurado)
-        if self.mail_service:
-            reset_url = f"{current_app.config.get(front_end_url, '')}/reset-password?token={token}"
-            self.mail_service.send_password_reset(email, token, reset_url)
-        
-        return token
+            if self.mail_service:
+                from flask import current_app
+                reset_url = f"{current_app.config.get(front_end_url, '')}/reset-password?token={token}"
+                self.mail_service.send_password_reset(email, token, reset_url)
+            
+            return token
+        except Exception as e:
+            self.db.rollback()
+            raise
     
     def complete_password_reset(self, token, new_password):
         """Completa el proceso de recuperación de contraseña"""

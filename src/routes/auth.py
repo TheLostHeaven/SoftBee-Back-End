@@ -9,7 +9,7 @@ import sqlite3
 
 def create_auth_routes(email_service):
     auth_bp = Blueprint('auth_routes', __name__)
-    auth_controller = AuthController(EmailService)
+    auth_controller = AuthController(db=get_db(),mail_service=email_service)
 
     def clean_user_input(data):
         """Limpia y normaliza los datos de entrada de manera segura"""

@@ -61,7 +61,7 @@ class AuthController:
             token = PasswordResetTokenModel.create_token(
                 self.db, 
                 user['id'],
-                expires_minutes=current_app.config['EXPIRES_TOKEN_EMAIL', 15]
+                expires_minutes=current_app.config[15]
             )
             
             # Enviar correo

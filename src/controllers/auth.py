@@ -1,14 +1,16 @@
 # src/controllers/auth_controller.py
 from werkzeug.security import generate_password_hash, check_password_hash
-from datetime import datetime, timedelta
-import secrets
 from src.models.users import UserModel
+from flask import current_app
 from src.models.password_reset_tokens import PasswordResetTokenModel
 from src.utils.email_service import EmailService
+from config import front_end_url
+
+
 class AuthController:
     def __init__(self, db, mail_service=None):
         self.db = db
-        self.mail_service = mail_service or EmailService()
+        self.mail_service = mail_service
         
     def register_user(self, nombre, username, email, phone, password):
         """Registra un nuevo usuario"""
@@ -40,7 +42,7 @@ class AuthController:
         if user and check_password_hash(user['password'], password):
             return user
         return None
-    
+        
     def initiate_password_reset(self, email):
         """Inicia el proceso de recuperación de contraseña"""
         user = UserModel.get_by_email(self.db, email)
@@ -53,7 +55,7 @@ class AuthController:
         
         # Envía el correo electrónico (si hay servicio configurado)
         if self.mail_service:
-            reset_url = f"https://tudominio.com/reset-password?token={token}"
+            reset_url = f"{current_app.config.get(front_end_url, '')}/reset-password?token={token}"
             self.mail_service.send_password_reset(email, token, reset_url)
         
         return token

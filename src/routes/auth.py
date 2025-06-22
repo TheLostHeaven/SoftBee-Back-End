@@ -4,10 +4,12 @@ from src.database.db import get_db
 from werkzeug.security import generate_password_hash, check_password_hash
 from src.middleware.jwt import generate_token
 from src.controllers.auth import AuthController
+from src.utils.email_service import EmailService
 import sqlite3
 
 def create_auth_routes(email_service):
     auth_bp = Blueprint('auth_routes', __name__)
+    auth_controller = AuthController(EmailService)
 
     def clean_user_input(data):
         """Limpia y normaliza los datos de entrada de manera segura"""
@@ -161,7 +163,7 @@ def create_auth_routes(email_service):
                 if not email:
                     return jsonify({'error': 'Email es requerido'}), 400
                     
-                AuthController.initiate_password_reset(email)
+                auth_controller.initiate_password_reset(email)
                 
                 return jsonify({
                     'message': 'Si el email está registrado, recibirás un correo'
@@ -183,7 +185,7 @@ def create_auth_routes(email_service):
                 if len(new_password) < 8:
                     return jsonify({'error': 'La contraseña debe tener al menos 8 caracteres'}), 400
                     
-                if AuthController.complete_password_reset(token, new_password):
+                if auth_controller.complete_password_reset(token, new_password):
                     return jsonify({'message': 'Contraseña actualizada exitosamente'}), 200
                 else:
                     return jsonify({'error': 'Token inválido o expirado'}), 400

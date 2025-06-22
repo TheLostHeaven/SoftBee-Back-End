@@ -15,45 +15,91 @@ def create_auth_routes(get_db_func, email_service):
 
     def clean_user_input(data):
         """Limpia y normaliza los datos de entrada de manera segura"""
-        # ... (código existente sin cambios) ...
+        if not data or not isinstance(data, dict):
+            raise ValueError("Invalid input data")
+        
+        cleaned = {}
+        errors = []
+        
+        # Procesar cada campo con validación individual
+        for field in ['nombre', 'username', 'email', 'phone', 'password']:
+            value = data.get(field)
+            
+            # Limpiar y convertir a string
+            if value is None:
+                cleaned_value = ''
+            elif isinstance(value, (int, float, bool)):
+                cleaned_value = str(value)
+            else:
+                cleaned_value = str(value).strip()
+            
+            cleaned[field] = cleaned_value
+            
+            # Validaciones específicas
+            if field == 'username' and not cleaned_value:
+                errors.append('Username is required')
+            if field == 'password' and not cleaned_value:
+                errors.append('Password is required')
+            if field == 'email' and not cleaned_value:
+                errors.append('Email is required')
+        
+        # Convertir a minúsculas
+        if cleaned['username']:
+            cleaned['username'] = cleaned['username'].lower()
+        if cleaned['email']:
+            cleaned['email'] = cleaned['email'].lower()
+        
+        if errors:
+            raise ValueError(" | ".join(errors))
+        
+        return cleaned
     
     def get_user_with_profile(user):
         """Añade la URL de la foto de perfil al objeto de usuario"""
         if not user:
             return None
-            
-        # Limpiar datos sensibles
+                
+    # Limpiar datos sensibles
         user.pop('password', None)
         user.pop('reset_token', None)
         user.pop('reset_token_expiry', None)
-        
-        # Obtener URL de la foto de perfil
+                
+    # Obtener URL de la foto de perfil
         file_handler = current_app.file_handler
         user['profile_picture_url'] = file_handler.get_profile_picture_url(
             user.get('profile_picture', 'default_profile.jpg')
         )
-        
+                
         return user
 
     # Register
     @auth_bp.route('/register', methods=['POST'])
     def auth_register():
         try:
+            # Verificar que tenemos datos JSON
+            if not request.is_json:
+                return jsonify({'error': 'Content-Type must be application/json'}), 400
+                
             data = request.get_json()
-            db = get_db_func()  # Obtener conexión al inicio
+            current_app.logger.debug(f"Raw JSON data: {data}")
+            db = get_db_func()
             
             # Limpia y valida los datos
-            cleaned_data = clean_user_input(data)
+            try:
+                cleaned_data = clean_user_input(data)
+                current_app.logger.debug(f"Cleaned data: {cleaned_data}")
+            except ValueError as ve:
+                current_app.logger.warning(f"Validation error: {str(ve)}")
+                return jsonify({'error': str(ve)}), 400
             
-            # Validaciones adicionales
+            # Si llegamos aquí, cleaned_data debe ser válido
+            if not cleaned_data or not isinstance(cleaned_data, dict):
+                current_app.logger.error("clean_user_input returned invalid data")
+                return jsonify({'error': 'Internal server error'}), 500
+                
+            # Validación de longitud de contraseña
             if len(cleaned_data['password']) < 8:
                 return jsonify({'error': 'Password must be at least 8 characters'}), 400
-                
-            if UserModel.get_by_username(db, cleaned_data['username']):
-                return jsonify({'error': 'Username already exists'}), 400
-                
-            if UserModel.get_by_email(db, cleaned_data['email']):
-                return jsonify({'error': 'Email already exists'}), 400
             
             # Crear usuario con datos limpios
             user_id = UserModel.create(
@@ -70,11 +116,14 @@ def create_auth_routes(get_db_func, email_service):
                 current_app.logger.error('User creation returned invalid ID')
                 return jsonify({'error': 'User creation failed'}), 500
             
+
             # Obtener usuario creado
             user_data = UserModel.get_by_id(db, user_id)
             if not user_data:
                 current_app.logger.error(f'User not found after creation, ID: {user_id}')
                 return jsonify({'error': 'User retrieval failed'}), 500
+            
+
                 
             # Añadir URL de la foto de perfil
             user_data = get_user_with_profile(user_data)

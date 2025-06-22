@@ -15,6 +15,7 @@ def create_app(testing=False):
     CORS(app)
     file_handler = FileHandler(app)
     file_handler.init_app(app)
+    app.file_handler = file_handler
 
     
     

@@ -34,6 +34,7 @@ class UserModel(BaseModel):
             'INSERT INTO users (nombre, username, email, phone, password) VALUES (?, ?, ?, ?, ?)',
             (nombre, username.lower(), email.lower(), str(phone), generate_password_hash(password))
         )
+        db.commit()
         return cursor.lastrowid
 
     @staticmethod

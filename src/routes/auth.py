@@ -40,7 +40,7 @@ def create_auth_routes(get_db_func, email_service):
     def auth_register():
         try:
             data = request.get_json()
-            db = get_db_func()
+            db = get_db_func()  # Obtener conexión al inicio
             
             # Limpia y valida los datos
             cleaned_data = clean_user_input(data)
@@ -61,14 +61,20 @@ def create_auth_routes(get_db_func, email_service):
                 nombre=cleaned_data['nombre'],
                 username=cleaned_data['username'],
                 email=cleaned_data['email'],
-                phone=cleaned_data['phone'],  # Ahora es string garantizado
+                phone=cleaned_data['phone'],
                 password=generate_password_hash(cleaned_data['password'])
             )
             
-            # Obtener usuario creado con foto de perfil
+            # Validar creación exitosa
+            if not user_id:
+                current_app.logger.error('User creation returned invalid ID')
+                return jsonify({'error': 'User creation failed'}), 500
+            
+            # Obtener usuario creado
             user_data = UserModel.get_by_id(db, user_id)
             if not user_data:
-                return jsonify({'error': 'User creation failed'}), 500
+                current_app.logger.error(f'User not found after creation, ID: {user_id}')
+                return jsonify({'error': 'User retrieval failed'}), 500
                 
             # Añadir URL de la foto de perfil
             user_data = get_user_with_profile(user_data)
@@ -94,7 +100,7 @@ def create_auth_routes(get_db_func, email_service):
             current_app.logger.error(f'Database error: {str(dbe)}')
             return jsonify({'error': 'Database operation failed'}), 500
         except Exception as err:
-            current_app.logger.error(f'Unexpected error: {str(err)}')
+            current_app.logger.error(f'Unexpected error: {str(err)}', exc_info=True)
             return jsonify({'error': 'Internal server error'}), 500
 
     # Login

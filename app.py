@@ -2,6 +2,7 @@ from flask import Flask
 from flask_cors import CORS
 from flask_mail import Mail
 from src.utils.email_service import EmailService
+from src.utils.file_handler import FileHandler
 import os
 from src.database.db import get_db
 #from src.routes.users import user_bp
@@ -12,6 +13,8 @@ def create_app(testing=False):
     app = Flask(__name__, instance_relative_config=True)
     app.config.from_object(Config)
     CORS(app)
+    file_handler = FileHandler(app)
+    file_handler.init_app(app)
 
     
     

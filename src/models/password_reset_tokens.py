@@ -5,6 +5,19 @@ from .base_model import BaseModel
 
 class PasswordResetTokenModel(BaseModel):
     """Modelo para manejo de tokens de recuperación"""
+    
+    @staticmethod
+    def _get_placeholder(db):
+        """Determina el marcador de posición según el motor de BD"""
+        driver = str(db.__class__).lower()
+        return '%s' if 'psycopg' in driver or 'postgres' in driver else '?'
+
+    @staticmethod
+    def _get_timestamp_function(db):
+        """Determina la función para obtener el timestamp actual"""
+        driver = str(db.__class__).lower()
+        return 'CURRENT_TIMESTAMP' if 'psycopg' in driver or 'postgres' in driver else "datetime('now')"
+
     @staticmethod
     def init_db(db):
         """Inicializa la tabla de tokens"""
@@ -31,23 +44,30 @@ class PasswordResetTokenModel(BaseModel):
     @staticmethod
     def create_token(db, user_id, expires_minutes=30):
         """Genera un nuevo token de recuperación"""
+        cursor = None
         try:
+            placeholder = PasswordResetTokenModel._get_placeholder(db)
             token = secrets.token_urlsafe(64)
             expires_at = datetime.utcnow() + timedelta(minutes=expires_minutes)
             
             cursor = db.cursor()
             
-            # Invalidar tokens previos
-            cursor.execute(
-                'UPDATE password_reset_tokens SET used = 1 WHERE user_id = ? AND used = 0',
-                (user_id,)
-            )
+            # Invalidar tokens previos (compatible con PostgreSQL y SQLite)
+            invalidate_query = f"""
+                UPDATE password_reset_tokens 
+                SET used = TRUE 
+                WHERE user_id = {placeholder} 
+                AND used = FALSE
+            """
+            cursor.execute(invalidate_query, (user_id,))
             
             # Insertar nuevo token
-            cursor.execute(
-                'INSERT INTO password_reset_tokens (user_id, token, expires_at) VALUES (?, ?, ?)',
-                (user_id, token, expires_at)
-            )
+            insert_query = f"""
+                INSERT INTO password_reset_tokens 
+                (user_id, token, expires_at) 
+                VALUES ({placeholder}, {placeholder}, {placeholder})
+            """
+            cursor.execute(insert_query, (user_id, token, expires_at))
             
             db.commit()
             return token
@@ -56,30 +76,51 @@ class PasswordResetTokenModel(BaseModel):
             db.rollback()
             raise RuntimeError(f"Error creating token: {str(e)}")
         finally:
-            # Cerrar el cursor explícitamente
             if cursor:
                 cursor.close()
 
     @staticmethod
     def validate_token(db, token):
         """Valida un token de recuperación"""
-        result = PasswordResetTokenModel._execute_query(
-            db,
-            '''
-            SELECT user_id FROM password_reset_tokens 
-            WHERE token = ? 
-            AND expires_at > datetime('now') 
-            AND used = FALSE
-            ''',
-            (token,)
-        )
-        return result[0]['user_id'] if result else None
+        cursor = None
+        try:
+            placeholder = PasswordResetTokenModel._get_placeholder(db)
+            timestamp_func = PasswordResetTokenModel._get_timestamp_function(db)
+            
+            query = f"""
+                SELECT user_id FROM password_reset_tokens 
+                WHERE token = {placeholder} 
+                AND expires_at > {timestamp_func} 
+                AND used = FALSE
+            """
+            cursor = db.cursor()
+            cursor.execute(query, (token,))
+            result = cursor.fetchone()
+            
+            return result['user_id'] if result else None
+        except Exception as e:
+            raise RuntimeError(f"Error validating token: {str(e)}")
+        finally:
+            if cursor:
+                cursor.close()
 
     @staticmethod
     def mark_as_used(db, token):
         """Marca un token como utilizado"""
-        PasswordResetTokenModel._execute_update(
-            db,
-            'UPDATE password_reset_tokens SET used = TRUE WHERE token = ?',
-            (token,)
-        )
+        cursor = None
+        try:
+            placeholder = PasswordResetTokenModel._get_placeholder(db)
+            query = f"""
+                UPDATE password_reset_tokens 
+                SET used = TRUE 
+                WHERE token = {placeholder}
+            """
+            cursor = db.cursor()
+            cursor.execute(query, (token,))
+            db.commit()
+        except Exception as e:
+            db.rollback()
+            raise RuntimeError(f"Error marking token as used: {str(e)}")
+        finally:
+            if cursor:
+                cursor.close()

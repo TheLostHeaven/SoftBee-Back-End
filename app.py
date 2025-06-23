@@ -5,8 +5,6 @@ from src.utils.email_service import EmailService
 from src.utils.file_handler import FileHandler
 import os
 from src.database.db import get_db
-#from src.routes.users import user_bp
-
 from config import Config
 
 def create_app(testing=False):

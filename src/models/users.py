@@ -1,4 +1,4 @@
-from werkzeug.security import generate_password_hash, check_password_hash
+import bcrypt
 from datetime import datetime, timedelta
 from flask import current_app
 
@@ -69,10 +69,8 @@ class UserModel:
 
     @staticmethod
     def create(db, nombre, username, email, phone, password):
-        """Crea un nuevo usuario en PostgreSQL"""
-        hashed_password = generate_password_hash(password)
-        current_app.logger.debug(f"Hashed password: {hashed_password}") 
-
+        """Crea un nuevo usuario en PostgreSQL. Recibe el hash ya generado."""
+        current_app.logger.debug(f"Hashed password: {password}") 
         cursor = db.cursor()
         try:
             cursor.execute(
@@ -81,7 +79,7 @@ class UserModel:
                 VALUES (%s, %s, %s, %s, %s)
                 RETURNING id
                 ''',
-                (nombre, username.lower(), email.lower(), phone, hashed_password)
+                (nombre, username.lower(), email.lower(), phone, password)
             )
             user_id = cursor.fetchone()[0]
             db.commit()
@@ -125,9 +123,14 @@ class UserModel:
 
     @staticmethod
     def verify_password(db, user_id, password):
-        """Verifica contraseña"""
+        """Verifica contraseña usando bcrypt"""
         user = UserModel.get_by_id(db, user_id)
-        return user and check_password_hash(user['password'], password)
+        if not user:
+            return False
+        stored_password = user['password']
+        if stored_password and (stored_password.startswith('$2b$') or stored_password.startswith('$2a$')):
+            return bcrypt.checkpw(password.encode('utf-8'), stored_password.encode('utf-8'))
+        return False
 
     @staticmethod
     def update(db, user_id, **kwargs):
@@ -144,9 +147,7 @@ class UserModel:
         
         for key, value in kwargs.items():
             if key in valid_keys and value is not None:
-                # Hashear contraseñas
-                if key == 'password':
-                    value = generate_password_hash(value)
+                # Solo aceptar el hash ya generado para password
                 set_clause.append(f"{key} = %s")
                 params.append(value)
         
@@ -203,12 +204,11 @@ class UserModel:
 
     @staticmethod
     def update_password(db, user_id, new_password):
-        """Actualiza la contraseña de un usuario"""
-        hashed_password = generate_password_hash(new_password)
+        """Actualiza la contraseña de un usuario. Recibe el hash ya generado."""
         UserModel._execute_update(
             db,
             'UPDATE users SET password = %s WHERE id = %s',
-            (hashed_password, user_id)
+            (new_password, user_id)
         )
         return True
 

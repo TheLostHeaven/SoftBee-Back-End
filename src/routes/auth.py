@@ -187,18 +187,18 @@ def create_auth_routes(get_db_func, email_service):
                 }), 401
 
             stored_password = user['password']
+            current_app.logger.debug(f"Stored password: {stored_password!r}")
+            current_app.logger.debug(f"Stored password length: {len(stored_password)}")
             password_match = False
             try:
                 # Solo bcrypt
-                if stored_password.startswith('$2b$') or stored_password.startswith('$2a$'):
+                if stored_password and (stored_password.startswith('$2b$') or stored_password.startswith('$2a$')):
                     password_match = bcrypt.checkpw(password.encode('utf-8'), stored_password.encode('utf-8'))
                 else:
-                    # Si no es bcrypt, rechaza el login (o migra si tienes usuarios antiguos)
                     password_match = False
             except Exception as e:
                 current_app.logger.error(f"Error en verificación: {str(e)}")
                 password_match = False
-            
             current_app.logger.debug(f'Password check result: {password_match}')
             
             if not password_match:

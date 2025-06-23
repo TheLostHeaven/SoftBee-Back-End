@@ -3,6 +3,7 @@ import os
 from werkzeug.security import generate_password_hash, check_password_hash
 from .base_model import BaseModel
 from datetime import datetime, timedelta
+from flask import current_app
 
 class UserModel(BaseModel):
     @staticmethod
@@ -52,7 +53,9 @@ class UserModel(BaseModel):
     @staticmethod
     def create(db, nombre, username, email, phone, password):
         is_postgres = 'postgres' in os.environ.get('DATABASE_URL', '').lower()
-        
+        hashed_password = generate_password_hash(password)
+        current_app.logger.debug(f"Hashed password: {hashed_password}") 
+
         if is_postgres:
             cursor = db.cursor()
             cursor.execute(
@@ -61,7 +64,7 @@ class UserModel(BaseModel):
                 VALUES (%s, %s, %s, %s, %s)
                 RETURNING id
                 ''',
-                (nombre, username.lower(), email.lower(), phone, generate_password_hash(password))
+                (nombre, username.lower(), email.lower(), phone, hashed_password)
             )
             user_id = cursor.fetchone()[0]
             db.commit()

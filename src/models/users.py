@@ -16,8 +16,6 @@ class UserModel:
                     email VARCHAR(100) UNIQUE NOT NULL,
                     phone VARCHAR(20),
                     password VARCHAR(200) NOT NULL,
-                    reset_token VARCHAR(200),
-                    reset_token_expiry TIMESTAMP,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
@@ -30,10 +28,6 @@ class UserModel:
             cursor.execute('''
                 CREATE INDEX IF NOT EXISTS idx_users_email ON users (email)
             ''')
-            cursor.execute('''
-                CREATE INDEX IF NOT EXISTS idx_users_reset_token ON users (reset_token)
-            ''')
-            
             db.commit()
         except Exception as e:
             db.rollback()

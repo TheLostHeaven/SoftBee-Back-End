@@ -16,14 +16,12 @@ class InventoryModel:
                     FOREIGN KEY (apiary_id) REFERENCES apiaries(id) ON DELETE CASCADE
                 )
             ''')
-            # ⚠️ Primero crea la tabla, luego los índices
             db.execute('CREATE INDEX IF NOT EXISTS idx_inventory_apiary_id ON inventory(apiary_id)')
             db.execute('CREATE INDEX IF NOT EXISTS idx_inventory_item_name ON inventory(item_name)')
             db.commit()
         except sqlite3.Error as e:
             db.rollback()
             raise e
-
 
     @staticmethod
     def _execute_query(db, query, params=()):
@@ -123,4 +121,15 @@ class InventoryModel:
             db,
             'UPDATE inventory SET quantity = quantity + ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
             (amount, item_id)
+        )
+
+    @staticmethod
+    def get_by_user_id(db, user_id):
+        """Obtiene todos los items de inventario de todos los apiarios de un usuario"""
+        return InventoryModel._execute_query(
+            db,
+            '''SELECT i.* FROM inventory i
+               JOIN apiaries a ON i.apiary_id = a.id
+               WHERE a.user_id = ?''',
+            (user_id,)
         )

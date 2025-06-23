@@ -1,10 +1,9 @@
-import os
-import sqlite3
+import psycopg2
+import psycopg2.extras
 
 class InventoryModel:
     @staticmethod
     def init_db(db):
-        """Inicializa la tabla de inventario (compatible SQLite y PostgreSQL)"""
         cursor = db.cursor()
         try:            
             cursor.execute('''
@@ -28,45 +27,29 @@ class InventoryModel:
 
     @staticmethod
     def _execute_query(db, query, params=()):
-        """Ejecuta consultas con placeholders universales"""
-        cursor = db.execute(query, params)
-        try:
-            # Manejo compatible para obtener nombres de columnas
-            columns = [col[0] for col in cursor.description]
-        except Exception:
-            # Para PostgreSQL que no devuelve description hasta después de fetch
-            columns = [desc[0] for desc in cursor.description] if cursor.description else []
-        
-        return [dict(zip(columns, row)) for row in cursor.fetchall()]
+        cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cursor.execute(query, params)
+        result = cursor.fetchall()
+        cursor.close()
+        return [dict(row) for row in result]
 
     @staticmethod
     def _execute_single_query(db, query, params=()):
-        """Ejecuta consulta y devuelve un solo resultado"""
-        cursor = db.execute(query, params)
+        cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cursor.execute(query, params)
         row = cursor.fetchone()
-        if not row:
-            return None
-        
-        try:
-            # Manejo compatible para obtener nombres de columnas
-            columns = [col[0] for col in cursor.description]
-        except Exception:
-            # Para PostgreSQL
-            columns = [desc[0] for desc in cursor.description] if cursor.description else []
-            
-        return dict(zip(columns, row))
+        cursor.close()
+        return dict(row) if row else None
 
     @staticmethod
     def _execute_update(db, query, params=()):
-        """Ejecuta actualizaciones con placeholders universales"""
-        cursor = db.execute(query, params)
-        if hasattr(db, 'commit'):
-            db.commit()
+        cursor = db.cursor()
+        cursor.execute(query, params)
+        db.commit()
         return cursor
 
     @staticmethod
     def get_all(db, apiary_id):
-        """Obtiene todo el inventario de un apiario (compatible)"""
         return InventoryModel._execute_query(
             db,
             'SELECT * FROM inventory WHERE apiary_id = %s ORDER BY id',
@@ -75,7 +58,6 @@ class InventoryModel:
 
     @staticmethod
     def get_by_id(db, item_id):
-        """Obtiene un ítem por ID (compatible)"""
         return InventoryModel._execute_single_query(
             db,
             'SELECT * FROM inventory WHERE id = %s',
@@ -84,32 +66,20 @@ class InventoryModel:
 
     @staticmethod
     def create(db, apiary_id, item_name, quantity=0, unit='unit'):
-        """Crea un nuevo ítem en el inventario (compatible)"""
-        is_postgres = 'postgresql' in os.environ.get('DATABASE_URL', '')
-        
-        if is_postgres:
-            # PostgreSQL necesita RETURNING para obtener el ID
-            query = '''
-                INSERT INTO inventory (apiary_id, item_name, quantity, unit)
-                VALUES (%s, %s, %s, %s)
-                RETURNING id
-            '''
-            cursor = db.execute(query, (apiary_id, item_name, quantity, unit))
-            if hasattr(db, 'commit'):
-                db.commit()
-            return cursor.fetchone()[0]
-        else:
-            # SQLite usa lastrowid
-            cursor = InventoryModel._execute_update(
-                db,
-                'INSERT INTO inventory (apiary_id, item_name, quantity, unit) VALUES (%s, %s, %s, %s)',
-                (apiary_id, item_name, quantity, unit)
-            )
-            return cursor.lastrowid
+        query = '''
+            INSERT INTO inventory (apiary_id, item_name, quantity, unit)
+            VALUES (%s, %s, %s, %s)
+            RETURNING id
+        '''
+        cursor = db.cursor()
+        cursor.execute(query, (apiary_id, item_name, quantity, unit))
+        db.commit()
+        item_id = cursor.fetchone()[0]
+        cursor.close()
+        return item_id
 
     @staticmethod
     def update(db, item_id, item_name=None, quantity=None, unit=None):
-        """Actualiza un ítem (compatible)"""
         fields = []
         params = []
         
@@ -132,7 +102,6 @@ class InventoryModel:
 
     @staticmethod
     def delete(db, item_id):
-        """Elimina un ítem (compatible)"""
         InventoryModel._execute_update(
             db,
             'DELETE FROM inventory WHERE id = %s',
@@ -141,7 +110,6 @@ class InventoryModel:
 
     @staticmethod
     def delete_by_name(db, apiary_id, item_name):
-        """Elimina ítem por nombre (compatible)"""
         InventoryModel._execute_update(
             db,
             'DELETE FROM inventory WHERE apiary_id = %s AND item_name = %s',
@@ -150,7 +118,6 @@ class InventoryModel:
 
     @staticmethod
     def get_by_name(db, apiary_id, item_name):
-        """Busca ítems por nombre (compatible)"""
         return InventoryModel._execute_query(
             db,
             'SELECT * FROM inventory WHERE apiary_id = %s AND item_name LIKE %s',
@@ -159,7 +126,6 @@ class InventoryModel:
 
     @staticmethod
     def adjust_quantity(db, item_id, amount):
-        """Ajusta la cantidad de un ítem (compatible)"""
         InventoryModel._execute_update(
             db,
             'UPDATE inventory SET quantity = quantity + %s, updated_at = CURRENT_TIMESTAMP WHERE id = %s',

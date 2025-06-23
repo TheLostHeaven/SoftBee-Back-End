@@ -6,19 +6,20 @@ class ApiaryController:
         self.model = ApiaryModel
     
     def create_apiary(self, user_id, name, location=None):
-        """Creates a new apiary for a user"""
-        return self.model.create(self.db, user_id, name, location)
-    
-    def get_apiary(self, apiary_id):
-        """Gets apiary by ID"""
-        return self.model.get_by_id(self.db, apiary_id)
-    
-    def get_all_apiaries(self):
-        cursor = self.db.cursor()
-        cursor.execute("SELECT * FROM apiaries")
-        apiaries = [dict(row) for row in cursor.fetchall()]
-        cursor.close()
-        return apiaries
+        cursor = None
+        try:
+            cursor = self.db.cursor()
+            # Sintaxis PostgreSQL con RETURNING
+            cursor.execute(
+                "INSERT INTO apiaries (user_id, name, location) "
+                "VALUES (%s, %s, %s) RETURNING id",
+                (user_id, name, location)
+            )
+            result = cursor.fetchone()
+            return result[0]  # Retorna el ID del nuevo apiario
+        finally:
+            if cursor:
+                cursor.close()
     
     def get_user_apiaries(self, user_id):
         """Gets all apiaries for a user"""

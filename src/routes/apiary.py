@@ -21,26 +21,37 @@ def create_apiary_routes():
         controller = ApiaryController(db)
         data = request.get_json()
         
+        # Validación de campos obligatorios
         if 'user_id' not in data or 'name' not in data:
             return jsonify({'error': 'User ID and name are required'}), 400
 
-        # Validar que el usuario exista
-        cursor = db.cursor()
-        cursor.execute("SELECT id FROM users WHERE id = ?", (data['user_id'],))
-        user = cursor.fetchone()
-        
-        if user is None:  # ¡El usuario no existe!
-            return jsonify({'error': 'User ID does not exist'}), 404  # 404 Not Found
-
+        cursor = None
         try:
+            cursor = db.cursor()
+            
+            # 1. Validar existencia del usuario (sintaxis corregida)
+            cursor.execute("SELECT id FROM users WHERE id = %s", (data['user_id'],))
+            user = cursor.fetchone()
+            
+            if not user:
+                return jsonify({'error': 'User not found'}), 404
+
+            # 2. Crear el apiario
             apiary_id = controller.create_apiary(
                 data['user_id'],
                 data['name'],
-                data.get('location')  # .get() para campos opcionales
+                data.get('location')  # Campo opcional
             )
+            
+            db.commit()
             return jsonify({'id': apiary_id}), 201
+
         except Exception as e:
-            return jsonify({'error': str(e)}), 400
+            db.rollback()
+            return jsonify({'error': str(e)}), 500
+        finally:
+            if cursor:
+                cursor.close()
 
     @apiary_bp.route('/apiaries/<int:apiary_id>', methods=['GET'])
     def get_apiary(apiary_id):

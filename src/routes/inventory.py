@@ -5,7 +5,7 @@ from src.database.db import get_db
 def create_inventory_routes():
     inventory_bp = Blueprint('inventory_routes', __name__)
 
-    @inventory_bp.route('/inventory', methods=['POST'])
+    @inventory_bp.route('/apiaries/<int:apiary_id>/inventory', methods=['POST'])
     def create_item():
         db = get_db()
         controller = InventoryController(db)

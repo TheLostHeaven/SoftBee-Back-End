@@ -11,7 +11,7 @@ class ApiaryModel:
                     id SERIAL PRIMARY KEY,
                     user_id INTEGER NOT NULL,
                     name VARCHAR(100) NOT NULL,
-                    location VARCHAR(20),
+                    location VARCHAR(50),
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE

@@ -1,25 +1,35 @@
 import os
 from flask import g, current_app
 import psycopg2
+from urllib.parse import quote_plus  # Importa para codificar la contraseña
 
 def get_db():
     if 'db' not in g:
-        # Usa DATABASE_URL si está definida, si no usa una conexión local por defecto
         database_url = os.getenv('DATABASE_URL')
+        sslmode_require = os.getenv('SSL_MODE', '') == 'require'
+
         if not database_url:
-            # Configuración local por defecto (ajusta usuario, contraseña y base de datos según tu entorno)
+            # Configuración local
             user = os.getenv('PGUSER', 'postgres')
             password = os.getenv('PGPASSWORD', 'postgres')
             host = os.getenv('PGHOST', 'localhost')
             port = os.getenv('PGPORT', '5432')
             dbname = os.getenv('PGDATABASE', 'softbee')
-            database_url = f"postgresql://{user}:{password}@{host}:{port}/{dbname}"
-        if database_url.startswith("postgres://"):
-            database_url = database_url.replace("postgres://", "postgresql://", 1)
-        g.db = psycopg2.connect(
-            database_url,
-            sslmode='require'  # Solo descomenta si necesitas SSL en producción
-        )
+            
+            # Codifica la contraseña por si tiene caracteres especiales
+            password_encoded = quote_plus(password)
+            database_url = f"postgresql://{user}:{password_encoded}@{host}:{port}/{dbname}"
+        else:
+            if database_url.startswith("postgres://"):
+                database_url = database_url.replace("postgres://", "postgresql://", 1)
+        
+        # Agrega sslmode=require al URI si es necesario
+        if sslmode_require and 'sslmode=' not in database_url:
+            separator = '?' if '?' not in database_url else '&'
+            database_url += f"{separator}sslmode=require"
+
+        # Conexión SOLO con el URI (sin parámetros adicionales)
+        g.db = psycopg2.connect(database_url)
     return g.db
 
 def close_db(e=None):

@@ -30,29 +30,52 @@ class UserModel(BaseModel):
     # ======================== MÉTODOS COMPATIBLES ========================
     @staticmethod
     def _execute_query(db, query, params=()):
-        """Ejecuta consultas con placeholders universales (%s)"""
-        cursor = db.execute(query, params)
-        return [dict(row) for row in cursor.fetchall()]
+        """Ejecuta consultas con cursores explícitos"""
+        cursor = db.cursor()
+        cursor.execute(query, params)
+        results = cursor.fetchall()
+        
+        # Convertir a diccionarios
+        if results:
+            columns = [col[0] for col in cursor.description]
+            return [dict(zip(columns, row)) for row in results]
+        return []
 
     @staticmethod
     def _execute_update(db, query, params=()):
-        """Ejecuta actualizaciones con placeholders universales (%s)"""
-        cursor = db.execute(query, params)
+        """Ejecuta actualizaciones con cursores explícitos"""
+        cursor = db.cursor()
+        cursor.execute(query, params)
         db.commit()
         return cursor
 
     @staticmethod
     def create(db, nombre, username, email, phone, password):
-        """Crea un nuevo usuario (compatible)"""
-        cursor = UserModel._execute_update(
-            db,
-            '''
-            INSERT INTO users (nombre, username, email, phone, password)
-            VALUES (%s, %s, %s, %s, %s)
-            ''',
-            (nombre, username.lower(), email.lower(), phone, generate_password_hash(password))
-        )
-        return cursor.lastrowid if not 'postgresql' in os.environ.get('DATABASE_URL', '') else cursor.fetchone()[0]
+        is_postgres = 'postgres' in os.environ.get('DATABASE_URL', '').lower()
+        
+        if is_postgres:
+            cursor = db.cursor()
+            cursor.execute(
+                '''
+                INSERT INTO users (nombre, username, email, phone, password)
+                VALUES (%s, %s, %s, %s, %s)
+                RETURNING id
+                ''',
+                (nombre, username.lower(), email.lower(), phone, generate_password_hash(password))
+            )
+            user_id = cursor.fetchone()[0]
+            db.commit()
+            return user_id
+        else:
+            cursor = UserModel._execute_update(
+                db,
+                '''
+                INSERT INTO users (nombre, username, email, phone, password)
+                VALUES (%s, %s, %s, %s, %s)
+                ''',
+                (nombre, username.lower(), email.lower(), phone, generate_password_hash(password))
+            )
+            return cursor.lastrowid
 
     @staticmethod
     def get_by_id(db, user_id):

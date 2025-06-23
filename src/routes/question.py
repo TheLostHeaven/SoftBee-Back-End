@@ -1,4 +1,4 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, current_app, g
 from ..controllers.questions import QuestionController
 from src.database.db import get_db
 

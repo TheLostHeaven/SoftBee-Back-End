@@ -11,16 +11,16 @@ class QuestionModel:
             cursor.execute ('''
                 CREATE TABLE IF NOT EXISTS questions (
                     id TEXT PRIMARY KEY,
-                    apiary_id {'INTEGER' if is_postgres else 'INT'} NOT NULL,
+                    apiary_id INTEGER NOT NULL,
                     question_text TEXT NOT NULL,
                     question_type TEXT NOT NULL CHECK(question_type IN ('text', 'number', 'option')),
-                    is_required {'BOOLEAN' if is_postgres else 'INTEGER'} NOT NULL DEFAULT {'FALSE' if is_postgres else '0'},
+                    is_required BOOLEAN NOT NULL DEFAULT FALSE,
                     display_order INTEGER NOT NULL,
                     min_value INTEGER,
                     max_value INTEGER,
-                    options TEXT,  -- JSON array for option questions
+                    options TEXT,
                     depends_on TEXT,
-                    is_active {'BOOLEAN' if is_postgres else 'INTEGER'} NOT NULL DEFAULT {'TRUE' if is_postgres else '1'},
+                    is_active BOOLEAN NOT NULL DEFAULT TRUE,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     FOREIGN KEY (apiary_id) REFERENCES apiaries(id) ON DELETE CASCADE

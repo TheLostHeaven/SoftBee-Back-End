@@ -9,7 +9,7 @@ class InventoryModel:
         try:            
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS inventory (
-                    id {id_type},
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
                     apiary_id INTEGER NOT NULL,
                     item_name TEXT NOT NULL,
                     quantity INTEGER NOT NULL DEFAULT 0,

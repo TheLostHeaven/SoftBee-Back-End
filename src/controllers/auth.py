@@ -1,5 +1,4 @@
 # src/controllers/auth_controller.py
-from werkzeug.security import generate_password_hash, check_password_hash
 from src.models.users import UserModel
 from flask import current_app,request, jsonify
 from src.models.password_reset_tokens import PasswordResetTokenModel

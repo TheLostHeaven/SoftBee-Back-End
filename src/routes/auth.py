@@ -1,7 +1,6 @@
 from flask import Blueprint, request, jsonify, current_app
 from src.models.users import UserModel
 from src.database.db import get_db
-from werkzeug.security import generate_password_hash, check_password_hash
 from src.middleware.jwt import generate_token
 from src.controllers.auth import AuthController
 from src.utils.email_service import EmailService

@@ -7,7 +7,7 @@ class BeehiveModel:
         cursor = db.cursor()
         try:
             cursor.execute('''
-                CREATE TABLE IF NOT EXISTS hives (
+                CREATE TABLE IF NOT EXISTS beehives (
                     id SERIAL PRIMARY KEY,
                     apiary_id INTEGER NOT NULL,
                     hive_number INTEGER NOT NULL,

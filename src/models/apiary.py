@@ -42,12 +42,12 @@ class ApiaryModel:
         return cursor
     
     @staticmethod
-    def create(db, user_id, name, location=None):
+    def create(db, user_id, name, location=None, beehives_count=0, treatments=False):
         try:
             cursor = db.cursor()
             cursor.execute(
                 'INSERT INTO apiaries (user_id, name, location, beehives_count, treatments) VALUES (%s, %s, %s, %s, %s) RETURNING id',
-                (user_id, name, location, 0, False)
+                (user_id, name, location, beehives_count, treatments)
             )
             apiary_id = cursor.fetchone()[0]
             db.commit()

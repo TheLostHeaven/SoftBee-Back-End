@@ -2,7 +2,6 @@
 from src.models.users import UserModel
 from flask import current_app,request, jsonify
 from src.models.password_reset_tokens import PasswordResetTokenModel
-import sqlite3
 import src.middleware.jwt as generate_token
 import bcrypt
 
@@ -57,27 +56,26 @@ class AuthController:
         
     def initiate_password_reset(self, email):
         """Inicia el proceso de recuperación de contraseña"""
-        try:
             # Validación del email
-            if not email or not isinstance(email, str):
-                raise ValueError("Email inválido")
+        if not email or not isinstance(email, str):
+            raise ValueError("Email inválido")
             
-            email = email.strip().lower()
+        email = email.strip().lower()
             
             # Buscar usuario
-            user = UserModel.get_by_email(self.db, email)
-            if not user:
-                current_app.logger.info(f"Intento de reset para email no registrado: {email}")
-                return None
+        user = UserModel.get_by_email(self.db, email)
+        if not user:
+            current_app.logger.info(f"Intento de reset para email no registrado: {email}")
+            return None
                 
-            expires_minutes = current_app.config.get('EXPIRES_TOKEN_EMAIL', 15)
+        expires_minutes = current_app.config.get('EXPIRES_TOKEN_EMAIL', 15)
             
             # Convertir a entero si es necesario
-            if isinstance(expires_minutes, str):
-                try:
-                    expires_minutes = int(expires_minutes)
-                except ValueError:
-                    expires_minutes = 15
+        if isinstance(expires_minutes, str):
+            try:
+                expires_minutes = int(expires_minutes)
+            except ValueError:
+                expires_minutes = 15
                     
             # Generar token
             token = PasswordResetTokenModel.create_token(
@@ -97,15 +95,7 @@ class AuthController:
                 )
             
             return token
-            
-        except sqlite3.Error as db_error:
-            self.db.rollback()
-            current_app.logger.error(f"Error de base de datos: {str(db_error)}")
-            raise
-        except Exception as e:
-            current_app.logger.error(f"Error inesperado: {str(e)}")
-            raise
-    
+                
     def complete_password_reset(self, token, new_password):
         """Completa el proceso de recuperación de contraseña"""
         # Valida el token

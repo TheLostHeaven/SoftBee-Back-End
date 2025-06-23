@@ -1,29 +1,25 @@
 import os
 from flask import g, current_app
 import psycopg2
-import sqlite3
 
 def get_db():
     if 'db' not in g:
-        # Entorno de producción (Render)
-        if 'RENDER' in os.environ:
-            database_url = os.getenv('DATABASE_URL')
-            
-            # Corrección para formato de Render
-            if database_url and database_url.startswith("postgres://"):
-                database_url = database_url.replace("postgres://", "postgresql://", 1)
-            
-            g.db = psycopg2.connect(
-                database_url,
-                sslmode='require'  # SSL obligatorio en Render
-            )
-        # Entorno de desarrollo (SQLite)
-        else:
-            g.db = sqlite3.connect(
-                os.path.join(current_app.instance_path, 'softbee.sqlite'),
-                detect_types=sqlite3.PARSE_DECLTYPES
-            )
-            g.db.row_factory = sqlite3.Row
+        # Usa DATABASE_URL si está definida, si no usa una conexión local por defecto
+        database_url = os.getenv('DATABASE_URL')
+        if not database_url:
+            # Configuración local por defecto (ajusta usuario, contraseña y base de datos según tu entorno)
+            user = os.getenv('PGUSER', 'postgres')
+            password = os.getenv('PGPASSWORD', 'postgres')
+            host = os.getenv('PGHOST', 'localhost')
+            port = os.getenv('PGPORT', '5432')
+            dbname = os.getenv('PGDATABASE', 'softbee')
+            database_url = f"postgresql://{user}:{password}@{host}:{port}/{dbname}"
+        if database_url.startswith("postgres://"):
+            database_url = database_url.replace("postgres://", "postgresql://", 1)
+        g.db = psycopg2.connect(
+            database_url,
+            sslmode='require'  # Solo descomenta si necesitas SSL en producción
+        )
     return g.db
 
 def close_db(e=None):
@@ -58,6 +54,3 @@ def init_app(app):
         # InspectionModel.init_db(db)
         ApiaryAccessModel.init_db(db)
         PasswordResetTokenModel.init_db(db)
-        
-        if not 'RENDER' in os.environ:
-            db.commit()

@@ -17,7 +17,7 @@ class PasswordResetTokenModel(BaseModel):
                     token TEXT NOT NULL UNIQUE,
                     expires_at DATETIME NOT NULL,
                     used BOOLEAN DEFAULT FALSE,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
                 )
             ''')

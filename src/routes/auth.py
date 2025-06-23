@@ -128,10 +128,10 @@ def create_auth_routes(get_db_func, email_service):
                 apiary_location = data.get('location', 'Ubicación no especificada')
                 new_apiary = ApiaryModel.create(
                     db,
-                    nombre=data['apiary_name'].strip(),
-                    ubicacion=apiary_location.strip(),
+                    name=data['apiary_name'].strip(),
+                    location=apiary_location.strip(),
                     beehives_count=0,
-                    Treatments=False,
+                    treatments=False,
                     user_id=user_id,
                 )
                 

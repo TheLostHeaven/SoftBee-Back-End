@@ -5,10 +5,8 @@ from .base_model import BaseModel
 from datetime import datetime, timedelta
 
 class UserModel(BaseModel):
-    """Modelo para manejo de usuarios (compatible SQLite y PostgreSQL)"""
     @staticmethod
     def init_db(db):
-        """Crea la tabla de usuarios si no existe"""
         cursor = db.cursor()
         try:
             cursor.execute('''

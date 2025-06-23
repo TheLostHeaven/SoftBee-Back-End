@@ -1,10 +1,9 @@
-import sqlite3
-
 class ApiaryModel:
     @staticmethod
     def init_db(db):
+        cursor = db.cursor()
         try:
-            db.execute('''
+            cursor.execute('''
                 CREATE TABLE IF NOT EXISTS apiaries (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     user_id INTEGER NOT NULL,
@@ -15,11 +14,12 @@ class ApiaryModel:
                     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
                 )
             ''')
-            db.execute('CREATE INDEX IF NOT EXISTS idx_apiaries_user_id ON apiaries(user_id)')
             db.commit()
-        except sqlite3.Error as e:
+        except Exception as e:
             db.rollback()
             raise e
+        finally:
+            cursor.close()
     
     @staticmethod
     def _execute_query(db, query, params=()):

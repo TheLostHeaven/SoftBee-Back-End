@@ -1,8 +1,9 @@
 class ApiaryAccessModel:
     @staticmethod
     def init_db(db):
+        cursor= db.cursor()
         try:
-            db.execute('''
+            cursor.execute('''
             CREATE TABLE IF NOT EXISTS apiary_access (
                 user_id INTEGER NOT NULL,
                 apiary_id INTEGER NOT NULL,
@@ -12,12 +13,12 @@ class ApiaryAccessModel:
                 FOREIGN KEY (apiary_id) REFERENCES apiary(id) ON DELETE CASCADE
             )
         ''')
-            db.execute('CREATE INDEX IF NOT EXISTS idx_access_user ON apiary_access(user_id)')
-            db.execute('CREATE INDEX IF NOT EXISTS idx_access_apiary ON apiary_access(apiary_id)')
             db.commit()
         except Exception as e:
             db.rollback()
             raise e
+        finally:
+            cursor.close()
         
     @staticmethod
     def _execute_query(db, query, params=()):

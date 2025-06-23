@@ -5,14 +5,9 @@ class InventoryModel:
     @staticmethod
     def init_db(db):
         """Inicializa la tabla de inventario (compatible SQLite y PostgreSQL)"""
-        try:
-            # Detectar el tipo de base de datos
-            is_postgres = 'postgresql' in os.environ.get('DATABASE_URL', '')
-            
-            # Creación de tabla compatible
-            id_type = 'SERIAL PRIMARY KEY' if is_postgres else 'INTEGER PRIMARY KEY AUTOINCREMENT'
-            
-            db.execute(f'''
+        cursor = db.cursor()
+        try:            
+            cursor.execute('''
                 CREATE TABLE IF NOT EXISTS inventory (
                     id {id_type},
                     apiary_id INTEGER NOT NULL,
@@ -24,18 +19,12 @@ class InventoryModel:
                     FOREIGN KEY (apiary_id) REFERENCES apiaries(id) ON DELETE CASCADE
                 )
             ''')
-            
-            # Creación de índices
-            for column in ['apiary_id', 'item_name']:
-                db.execute(f'CREATE INDEX IF NOT EXISTS idx_inventory_{column} ON inventory({column})')
-            
-            if hasattr(db, 'commit'):
-                db.commit()
-                
+            db.commit()
         except Exception as e:
-            if hasattr(db, 'rollback'):
-                db.rollback()
+            db.rollback()
             raise e
+        finally:
+            cursor.close()
 
     @staticmethod
     def _execute_query(db, query, params=()):

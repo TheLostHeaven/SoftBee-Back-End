@@ -5,24 +5,28 @@ from .base_model import BaseModel
 
 class PasswordResetTokenModel(BaseModel):
     """Modelo para manejo de tokens de recuperación"""
-    
     @staticmethod
     def init_db(db):
         """Inicializa la tabla de tokens"""
-        db.execute('''
-            CREATE TABLE IF NOT EXISTS password_reset_tokens (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id INTEGER NOT NULL,
-                token TEXT NOT NULL UNIQUE,
-                expires_at DATETIME NOT NULL,
-                used BOOLEAN DEFAULT FALSE,
-                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-            )
-        ''')
-        db.execute('CREATE INDEX IF NOT EXISTS idx_reset_tokens_token ON password_reset_tokens(token)')
-        db.execute('CREATE INDEX IF NOT EXISTS idx_reset_tokens_user_id ON password_reset_tokens(user_id)')
-        db.commit()
+        cursor = db.cursor()
+        try:
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS password_reset_tokens (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER NOT NULL,
+                    token TEXT NOT NULL UNIQUE,
+                    expires_at DATETIME NOT NULL,
+                    used BOOLEAN DEFAULT FALSE,
+                    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+                )
+            ''')
+            db.commit()
+        except Exception as e:
+            db.rollback()
+            raise e
+        finally:
+            cursor.close()
 
     @staticmethod
     def create_token(db, user_id, expires_minutes=30):

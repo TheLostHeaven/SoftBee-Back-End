@@ -1,8 +1,9 @@
 class InspectionModel:
     @staticmethod
     def init_db(db):
+        cursor = db.cursor()
         try: 
-            db.execute('''
+            cursor.execute('''
                 CREATE TABLE IF NOT EXISTS inspection (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     beehive_id INTEGER NOT NULL,
@@ -14,13 +15,12 @@ class InspectionModel:
                     UNIQUE(beehive_id, question_id, fecha)
             )
         ''')
-            db.execute('CREATE INDEX IF NOT EXISTS idx_inspection_beehive ON inspection(beehive_id)')
-            db.execute('CREATE INDEX IF NOT EXISTS idx_inspection_question ON inspection(question_id)')
-            db.execute('CREATE INDEX IF NOT EXISTS idx_inspection_fecha ON inspection(fecha)')
             db.commit()
         except Exception as e:
             db.rollback()
             raise e
+        finally:
+            cursor.close()
 
     @staticmethod
     def _execute_query(db, query, params=()):

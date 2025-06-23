@@ -3,8 +3,9 @@ import sqlite3
 class BeehiveModel:
     @staticmethod
     def init_db(db):
+        cursor=db.cursor()
         try:
-            db.execute('''
+            cursor.execute('''
                 CREATE TABLE IF NOT EXISTS hives (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     apiary_id INTEGER NOT NULL,
@@ -33,11 +34,12 @@ class BeehiveModel:
                     UNIQUE(apiary_id, hive_number)
                 )
             ''')
-            db.execute('CREATE INDEX IF NOT EXISTS idx_hives_apiary_id ON hives(apiary_id)')
             db.commit()
-        except sqlite3.Error as e:
+        except Exception as e:
             db.rollback()
             raise e
+        finally:
+            cursor.close()
     
     @staticmethod
     def _execute_query(db, query, params=()):

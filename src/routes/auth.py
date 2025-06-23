@@ -190,22 +190,12 @@ def create_auth_routes(get_db_func, email_service):
             stored_password = user['password']
             password_match = False
             try:
-                # Si el hash es bcrypt
+                # Solo bcrypt
                 if stored_password.startswith('$2b$') or stored_password.startswith('$2a$'):
                     password_match = bcrypt.checkpw(password.encode('utf-8'), stored_password.encode('utf-8'))
-                # Si es scrypt o pbkdf2, usar werkzeug y migrar a bcrypt si es correcto
-                elif stored_password.startswith('scrypt:') or stored_password.startswith('pbkdf2:'):
-                    password_match = check_password_hash(stored_password, password)
-                    if password_match:
-                        # Migrar a bcrypt
-                        new_hash = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
-                        UserModel.update_password(db, user['id'], new_hash)
-                # Si es texto plano, comparar y migrar a bcrypt
                 else:
-                    password_match = (stored_password == password)
-                    if password_match:
-                        new_hash = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
-                        UserModel.update_password(db, user['id'], new_hash)
+                    # Si no es bcrypt, rechaza el login (o migra si tienes usuarios antiguos)
+                    password_match = False
             except Exception as e:
                 current_app.logger.error(f"Error en verificación: {str(e)}")
                 password_match = False

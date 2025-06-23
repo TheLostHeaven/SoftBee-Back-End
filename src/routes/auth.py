@@ -153,6 +153,7 @@ def create_auth_routes(get_db_func, email_service):
             return jsonify({'error': 'Internal server error'}), 500
 
     # Login
+
     @auth_bp.route('/login', methods=['POST'])
     def auth_login():
         try:
@@ -188,13 +189,6 @@ def create_auth_routes(get_db_func, email_service):
 
             # Depuración: Verificar si la contraseña almacenada es un hash válido
             stored_password = user['password']
-            if not stored_password.startswith('pbkdf2:sha256:'):
-                current_app.logger.error(f'Invalid password hash format for user: {user["id"]}')
-                return jsonify({
-                    'error': 'Authentication error',
-                    'message': 'Invalid password storage format'
-                }), 500
-
             # Verificación de contraseña con logging de depuración
             password_match = check_password_hash(stored_password, password)
             current_app.logger.debug(f'Password check for user {user["id"]}: {password_match}')

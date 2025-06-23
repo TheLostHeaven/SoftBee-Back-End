@@ -4,7 +4,6 @@ from flask import current_app,request, jsonify
 from src.models.password_reset_tokens import PasswordResetTokenModel
 import sqlite3
 import src.middleware.jwt as generate_token
-import src.models.users as UserModel
 import bcrypt
 
 class AuthController:

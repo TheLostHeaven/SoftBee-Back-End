@@ -16,7 +16,7 @@ class PasswordResetTokenModel(BaseModel):
                     user_id INTEGER NOT NULL,
                     token TEXT NOT NULL UNIQUE,
                     used BOOLEAN DEFAULT FALSE,
-                    expires_at TIMESTAMP NOT NULL,,
+                    expires_at TIMESTAMP NOT NULL,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
                 )

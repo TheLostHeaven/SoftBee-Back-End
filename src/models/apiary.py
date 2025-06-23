@@ -43,13 +43,20 @@ class ApiaryModel:
     
     @staticmethod
     def create(db, user_id, name, location=None):
-        cursor = ApiaryModel._execute_update(
-            db,
-            'INSERT INTO apiaries (user_id, name, location) VALUES (%s, %s, %s) RETURNING id',
-            (user_id, name, location))
-        apiary_id = cursor.fetchone()[0]
-        cursor.close()
-        return apiary_id
+        try:
+            cursor = db.cursor()
+            cursor.execute(
+                'INSERT INTO apiaries (user_id, name, location, beehives_count, treatments) VALUES (%s, %s, %s, %s, %s) RETURNING id',
+                (user_id, name, location, 0, False)
+            )
+            apiary_id = cursor.fetchone()[0]
+            db.commit()
+            return apiary_id
+        except Exception as e:
+            db.rollback()
+            raise e
+        finally:
+            cursor.close()
     
     @staticmethod
     def get_by_id(db, apiary_id):

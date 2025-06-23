@@ -34,21 +34,21 @@ def init_app(app):
         db = get_db()
         # Importa y inicializa todos los modelos
         from src.models.users import UserModel
-        from src.models.apiary import ApiaryModel
-        from src.models.beehive import BeehiveModel
-        from src.models.inspection import InspectionModel
-        from src.models.apiary_access import ApiaryAccessModel
-        from src.models.questions import QuestionModel
-        from src.models.inventory import InventoryModel
-        from src.models.password_reset_tokens import PasswordResetTokenModel
+        # from src.models.apiary import ApiaryModel
+        # from src.models.beehive import BeehiveModel
+        # from src.models.inspection import InspectionModel
+        # from src.models.apiary_access import ApiaryAccessModel
+        # from src.models.questions import QuestionModel
+        # from src.models.inventory import InventoryModel
+        # from src.models.password_reset_tokens import PasswordResetTokenModel
         
         # Crea todas las tablas
         UserModel.init_db(db)
-        ApiaryModel.init_db(db)
-        QuestionModel.init_db(db)
-        InventoryModel.init_db(db)
-        BeehiveModel.init_db(db)
-        InspectionModel.init_db(db)
-        ApiaryAccessModel.init_db(db)
-        PasswordResetTokenModel.init_db(db)
+        # ApiaryModel.init_db(db)
+        # QuestionModel.init_db(db)
+        # InventoryModel.init_db(db)
+        # BeehiveModel.init_db(db)
+        # InspectionModel.init_db(db)
+        # ApiaryAccessModel.init_db(db)
+        # PasswordResetTokenModel.init_db(db)
         db.commit()

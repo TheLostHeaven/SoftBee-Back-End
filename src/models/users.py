@@ -169,20 +169,20 @@ class UserModel(BaseModel):
         return result[0] if result else None
 
     @staticmethod
-    def update_password(db, user_id, new_password):
-        """Actualiza contraseña (compatible)"""
-        UserModel._execute_update(
-            db,
-            '''
-            UPDATE users
-            SET password = %s, 
-                reset_token = NULL, 
-                reset_token_expiry = NULL, 
-                updated_at = CURRENT_TIMESTAMP
-            WHERE id = %s
-            ''',
-            (generate_password_hash(new_password), user_id)
-        )
+    def update_password(db, user_id, new_password_hash):
+        """Actualiza el hash de contraseña de un usuario"""
+        try:
+            cursor = db.cursor()
+            placeholder = '?' if 'sqlite' in str(type(db)) else '%s'
+            cursor.execute(
+                f"UPDATE users SET password = {placeholder} WHERE id = {placeholder}",
+                (new_password_hash, user_id))
+            db.commit()
+            return True
+        except Exception as e:
+            db.rollback()
+            current_app.logger.error(f"Error actualizando contraseña: {str(e)}")
+            return False
 
     @staticmethod
     def update_profile_picture(db, user_id, filename):

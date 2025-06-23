@@ -108,9 +108,8 @@ def create_auth_routes(get_db_func, email_service):
                 username=cleaned_data['username'],
                 email=cleaned_data['email'],
                 phone=cleaned_data['phone'],
-                password=generate_password_hash(cleaned_data['password'])
+                password=generate_password_hash(cleaned_data['password'],method='scrypt',  )
             )
-            
             # Validar creación exitosa
             if not user_id:
                 current_app.logger.error('User creation returned invalid ID')
@@ -163,7 +162,7 @@ def create_auth_routes(get_db_func, email_service):
 
             # Limpieza y validación básica
             identifier = data.get('username', data.get('email', '')).strip().lower()
-            password = data.get('password', '')  # Mantener como string puro
+            password = data.get('password', '').strip()
 
             if not password:
                 return jsonify({'error': 'Password is required'}), 400
@@ -194,21 +193,29 @@ def create_auth_routes(get_db_func, email_service):
             # Verificación de contraseña mejorada
             password_match = False
             try:
-                # Intento principal de verificación
-                password_match = check_password_hash(stored_password, password)
+                password_match = check_password_hash(
+                    stored_password, 
+                    password,
+                    method='scrypt'  # Fuerza el uso de scrypt
+                )
                 
-                # Detección de contraseñas en texto plano
-                if not password_match and not stored_password.startswith(('pbkdf2:', 'scrypt:')):
-                    current_app.logger.warning("Possible plaintext password detected")
-                    password_match = (stored_password == password)
+                # Si falla, intenta con pbkdf2 por compatibilidad
+                if not password_match and stored_password.startswith('pbkdf2:'):
+                    password_match = check_password_hash(
+                        stored_password, 
+                        password,
+                        method='pbkdf2:sha256'
+                    )
                     
-                    # Actualizar a hash si es texto plano
-                    if password_match:
-                        current_app.logger.info("Upgrading plaintext password to hash")
-                        new_hash = generate_password_hash(password)
-                        UserModel.update_password(db, user['id'], new_hash)
+                # Actualiza a scrypt si es un hash antiguo
+                if password_match and stored_password.startswith('pbkdf2:'):
+                    current_app.logger.info("Actualizando hash de contraseña a scrypt")
+                    new_hash = generate_password_hash(password, method='scrypt', salt_length=16)
+                    UserModel.update_password(db, user['id'], new_hash)
+                    
             except Exception as e:
-                current_app.logger.error(f"Password verification error: {str(e)}")
+                current_app.logger.error(f"Error en verificación: {str(e)}")
+                password_match = False
             
             current_app.logger.debug(f'Password check result: {password_match}')
             

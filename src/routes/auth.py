@@ -152,8 +152,6 @@ def create_auth_routes(get_db_func, email_service):
             current_app.logger.error(f'Unexpected error: {str(err)}', exc_info=True)
             return jsonify({'error': 'Internal server error'}), 500
 
-    # Login
-
     @auth_bp.route('/login', methods=['POST'])
     def auth_login():
         try:
@@ -163,9 +161,9 @@ def create_auth_routes(get_db_func, email_service):
             data = request.get_json()
             db = get_db_func()
 
-            # Limpieza y validación básica - NO usar strip() en la contraseña
+            # Limpieza y validación básica
             identifier = data.get('username', data.get('email', '')).strip().lower()
-            password = data.get('password', '')  # Eliminar .strip() aquí
+            password = data.get('password', '')  # Mantener como string puro
 
             if not password:
                 return jsonify({'error': 'Password is required'}), 400
@@ -173,7 +171,7 @@ def create_auth_routes(get_db_func, email_service):
             if not identifier:
                 return jsonify({'error': 'Username or email is required'}), 400
 
-            # Buscar usuario por username o email (ya normalizados)
+            # Buscar usuario
             user = None
             if '@' in identifier:
                 user = UserModel.get_by_email(db, identifier)
@@ -187,11 +185,32 @@ def create_auth_routes(get_db_func, email_service):
                     'message': 'User not found with provided credentials'
                 }), 401
 
-            # Depuración: Verificar si la contraseña almacenada es un hash válido
             stored_password = user['password']
-            # Verificación de contraseña con logging de depuración
-            password_match = check_password_hash(stored_password, password)
-            current_app.logger.debug(f'Password check for user {user["id"]}: {password_match}')
+            
+            # Logging de diagnóstico
+            current_app.logger.debug(f"Stored password: {stored_password[:50]}...")
+            current_app.logger.debug(f"Stored password length: {len(stored_password)}")
+            
+            # Verificación de contraseña mejorada
+            password_match = False
+            try:
+                # Intento principal de verificación
+                password_match = check_password_hash(stored_password, password)
+                
+                # Detección de contraseñas en texto plano
+                if not password_match and not stored_password.startswith(('pbkdf2:', 'scrypt:')):
+                    current_app.logger.warning("Possible plaintext password detected")
+                    password_match = (stored_password == password)
+                    
+                    # Actualizar a hash si es texto plano
+                    if password_match:
+                        current_app.logger.info("Upgrading plaintext password to hash")
+                        new_hash = generate_password_hash(password)
+                        UserModel.update_password(db, user['id'], new_hash)
+            except Exception as e:
+                current_app.logger.error(f"Password verification error: {str(e)}")
+            
+            current_app.logger.debug(f'Password check result: {password_match}')
             
             if not password_match:
                 current_app.logger.warning(f'Failed login attempt for user: {user["username"]}')
@@ -203,7 +222,7 @@ def create_auth_routes(get_db_func, email_service):
             # Obtener URL de la foto de perfil
             user = get_user_with_profile(user)
             
-            # Generar token con foto de perfil
+            # Generar token
             token = generate_token(
                 user_id=user['id'],
                 user_data={
@@ -226,7 +245,7 @@ def create_auth_routes(get_db_func, email_service):
             current_app.logger.error(f'Database error: {str(db_error)}')
             return jsonify({'error': 'Database operation failed'}), 500
         except Exception as e:
-            current_app.logger.error(f'Unexpected error: {str(e)}')
+            current_app.logger.error(f'Unexpected error: {str(e)}', exc_info=True)
             return jsonify({'error': 'Internal server error'}), 500
         
     # Forgot Password    

@@ -162,9 +162,9 @@ def create_auth_routes(get_db_func, email_service):
             data = request.get_json()
             db = get_db_func()
 
-            # Limpieza y validación básica
+            # Limpieza y validación básica - NO usar strip() en la contraseña
             identifier = data.get('username', data.get('email', '')).strip().lower()
-            password = data.get('password', '').strip()
+            password = data.get('password', '')  # Eliminar .strip() aquí
 
             if not password:
                 return jsonify({'error': 'Password is required'}), 400
@@ -186,7 +186,20 @@ def create_auth_routes(get_db_func, email_service):
                     'message': 'User not found with provided credentials'
                 }), 401
 
-            if not check_password_hash(user['password'], password):
+            # Depuración: Verificar si la contraseña almacenada es un hash válido
+            stored_password = user['password']
+            if not stored_password.startswith('pbkdf2:sha256:'):
+                current_app.logger.error(f'Invalid password hash format for user: {user["id"]}')
+                return jsonify({
+                    'error': 'Authentication error',
+                    'message': 'Invalid password storage format'
+                }), 500
+
+            # Verificación de contraseña con logging de depuración
+            password_match = check_password_hash(stored_password, password)
+            current_app.logger.debug(f'Password check for user {user["id"]}: {password_match}')
+            
+            if not password_match:
                 current_app.logger.warning(f'Failed login attempt for user: {user["username"]}')
                 return jsonify({
                     'error': 'Invalid credentials',

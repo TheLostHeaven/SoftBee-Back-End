@@ -1,18 +1,23 @@
+import psycopg2
+import psycopg2.extras
+
 class ApiaryAccessModel:
     @staticmethod
     def init_db(db):
-        cursor= db.cursor()
+        cursor = db.cursor()
         try:
             cursor.execute('''
             CREATE TABLE IF NOT EXISTS apiary_access (
+                id SERIAL PRIMARY KEY,
                 user_id INTEGER NOT NULL,
                 apiary_id INTEGER NOT NULL,
                 permission_level INTEGER DEFAULT 1, 
                 PRIMARY KEY (user_id, apiary_id),
                 FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-                FOREIGN KEY (apiary_id) REFERENCES apiary(id) ON DELETE CASCADE
+                FOREIGN KEY (apiary_id) REFERENCES apiaries(id) ON DELETE CASCADE
             )
-        ''')
+            ''')
+
             db.commit()
         except Exception as e:
             db.rollback()
@@ -22,13 +27,16 @@ class ApiaryAccessModel:
         
     @staticmethod
     def _execute_query(db, query, params=()):
-        """Ejecuta una consulta y retorna resultados"""
-        return db.execute(query, params).fetchall()
+        cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cursor.execute(query, params)
+        result = cursor.fetchall()
+        cursor.close()
+        return result
     
     @staticmethod
     def _execute_update(db, query, params=()):
-        """Ejecuta una actualización y hace commit"""
-        cursor = db.execute(query, params)
+        cursor = db.cursor()
+        cursor.execute(query, params)
         db.commit()
         return cursor
     
@@ -42,7 +50,7 @@ class ApiaryAccessModel:
         """Obtiene todos los accesos de un usuario específico (datos crudos)"""
         return ApiaryAccessModel._execute_query(
             db, 
-            'SELECT * FROM apiary_access WHERE user_id = ? ORDER BY apiary_id', 
+            'SELECT * FROM apiary_access WHERE user_id = %s ORDER BY apiary_id', 
             (user_id,)
         )
     
@@ -51,7 +59,7 @@ class ApiaryAccessModel:
         """Obtiene todos los accesos a un apiario específico (datos crudos)"""
         return ApiaryAccessModel._execute_query(
             db, 
-            'SELECT * FROM apiary_access WHERE apiary_id = ? ORDER BY user_id', 
+            'SELECT * FROM apiary_access WHERE apiary_id = %s ORDER BY user_id', 
             (apiary_id,)
         )
     
@@ -60,29 +68,34 @@ class ApiaryAccessModel:
         """Crea un nuevo acceso a un apiario (operación cruda)"""
         cursor = ApiaryAccessModel._execute_update(
             db,
-            'INSERT INTO apiary_access (user_id, apiary_id, permission_level) '
-            'VALUES (?, ?, ?)',
+            'INSERT INTO apiary_access (user_id, apiary_id, permission_level) VALUES (%s, %s, %s) RETURNING user_id',
             (user_id, apiary_id, permission_level)
         )
-        return cursor.lastrowid
+        inserted_id = cursor.fetchone()[0]
+        cursor.close()
+        return inserted_id
     
     @staticmethod
     def update_raw(db, user_id, apiary_id, permission_level):
         """Actualiza el nivel de acceso a un apiario existente (operación cruda)"""
         cursor = ApiaryAccessModel._execute_update(
             db,
-            'UPDATE apiary_access SET permission_level = ? WHERE user_id = ? AND apiary_id = ?',
+            'UPDATE apiary_access SET permission_level = %s WHERE user_id = %s AND apiary_id = %s',
             (permission_level, user_id, apiary_id)
         )
-        return cursor.rowcount > 0
+        updated = cursor.rowcount > 0
+        cursor.close()
+        return updated
     
     @staticmethod
     def delete_raw(db, user_id, apiary_id):
         """Elimina un acceso a un apiario por usuario y apiario (operación cruda)"""
         cursor = ApiaryAccessModel._execute_update(
             db, 
-            'DELETE FROM apiary_access WHERE user_id = ? AND apiary_id = ?', 
+            'DELETE FROM apiary_access WHERE user_id = %s AND apiary_id = %s', 
             (user_id, apiary_id)
         )
-        return cursor.rowcount > 0
-    
+        deleted = cursor.rowcount > 0
+        cursor.close()
+        return deleted
+

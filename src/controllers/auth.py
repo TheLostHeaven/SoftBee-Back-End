@@ -1,10 +1,11 @@
 # src/controllers/auth_controller.py
 from werkzeug.security import generate_password_hash, check_password_hash
 from src.models.users import UserModel
-from flask import current_app
+from flask import current_app,request, jsonify
 from src.models.password_reset_tokens import PasswordResetTokenModel
 import sqlite3
-
+import src.middleware.jwt as generate_token
+import src.models.users as UserModel
 
 class AuthController:
     def __init__(self, db, mail_service=None):
@@ -31,16 +32,29 @@ class AuthController:
         )
     
     def authenticate_user(self, identifier, password):
-        """Autentica un usuario por email o username"""
-        user = None
-        if '@' in identifier:
-            user = UserModel.get_by_email(self.db, identifier)
-        else:
-            user = UserModel.get_by_username(self.db, identifier)
-            
-        if user and check_password_hash(user['password'], password):
-            return user
-        return None
+        data = request.get_json()
+        email = data.get('email')
+        password = data.get('password')
+
+        if not email or not password:
+            return jsonify({"error": "Email y contraseña requeridos"}), 400
+
+        user = UserModel.query.filter_by(email=email).first()
+        
+        if not user:
+            current_app.logger.warning(f"Intento de login con email no registrado: {email}")
+            return jsonify({"error": "Credenciales inválidas"}), 401
+
+        if not user.check_password(password):
+            current_app.logger.warning(f"Intento de login con contraseña incorrecta para: {email}")
+            return jsonify({"error": "Credenciales inválidas"}), 401
+
+        auth_token = generate_token(user.id)
+        return jsonify({
+            "message": "Login exitoso",
+            "token": auth_token,
+            "user_id": user.id
+        }), 200
         
     def initiate_password_reset(self, email):
         """Inicia el proceso de recuperación de contraseña"""

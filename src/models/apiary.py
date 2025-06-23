@@ -1,3 +1,6 @@
+import psycopg2
+import psycopg2.extras
+
 class ApiaryModel:
     @staticmethod
     def init_db(db):
@@ -23,11 +26,16 @@ class ApiaryModel:
     
     @staticmethod
     def _execute_query(db, query, params=()):
-        return db.execute(query, params).fetchall()
+        cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
+        cursor.execute(query, params)
+        result = cursor.fetchall()
+        cursor.close()
+        return result
     
     @staticmethod
     def _execute_update(db, query, params=()):
-        cursor = db.execute(query, params)
+        cursor = db.cursor()
+        cursor.execute(query, params)
         db.commit()
         return cursor
     
@@ -35,18 +43,20 @@ class ApiaryModel:
     def create(db, user_id, name, location=None):
         cursor = ApiaryModel._execute_update(
             db,
-            'INSERT INTO apiaries (user_id, name, location) VALUES (?, ?, ?)',
+            'INSERT INTO apiaries (user_id, name, location) VALUES (%s, %s, %s) RETURNING id',
             (user_id, name, location))
-        return cursor.lastrowid
+        apiary_id = cursor.fetchone()[0]
+        cursor.close()
+        return apiary_id
     
     @staticmethod
     def get_by_id(db, apiary_id):
-        result = ApiaryModel._execute_query(db, 'SELECT * FROM apiaries WHERE id = ?', (apiary_id,))
+        result = ApiaryModel._execute_query(db, 'SELECT * FROM apiaries WHERE id = %s', (apiary_id,))
         return dict(result[0]) if result else None
     
     @staticmethod
     def get_by_user(db, user_id):
-        rows = ApiaryModel._execute_query(db, 'SELECT * FROM apiaries WHERE user_id = ? ORDER BY name', (user_id,))
+        rows = ApiaryModel._execute_query(db, 'SELECT * FROM apiaries WHERE user_id = %s ORDER BY name', (user_id,))
         return [dict(row) for row in rows]
     
     @staticmethod
@@ -55,19 +65,19 @@ class ApiaryModel:
         params = []
         
         if name is not None:
-            fields.append("name = ?")
+            fields.append("name = %s")
             params.append(name)
         if location is not None:
-            fields.append("location = ?")
+            fields.append("location = %s")
             params.append(location)
         
         if not fields:
             raise ValueError("No fields to update")
         
         params.append(apiary_id)
-        query = f"UPDATE apiaries SET {', '.join(fields)}, updated_at = CURRENT_TIMESTAMP WHERE id = ?"
+        query = f"UPDATE apiaries SET {', '.join(fields)}, updated_at = CURRENT_TIMESTAMP WHERE id = %s"
         ApiaryModel._execute_update(db, query, params)
     
     @staticmethod
     def delete(db, apiary_id):
-        ApiaryModel._execute_update(db, 'DELETE FROM apiaries WHERE id = ?', (apiary_id,))
+        ApiaryModel._execute_update(db, 'DELETE FROM apiaries WHERE id = %s', (apiary_id,))

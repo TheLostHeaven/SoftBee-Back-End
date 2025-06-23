@@ -8,7 +8,6 @@ class ApiaryAccessModel:
         try:
             cursor.execute('''
             CREATE TABLE IF NOT EXISTS apiary_access (
-                id SERIAL PRIMARY KEY,
                 user_id INTEGER NOT NULL,
                 apiary_id INTEGER NOT NULL,
                 permission_level INTEGER DEFAULT 1, 

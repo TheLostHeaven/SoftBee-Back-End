@@ -190,29 +190,41 @@ def create_auth_routes(get_db_func, email_service):
             current_app.logger.debug(f"Stored password: {stored_password[:50]}...")
             current_app.logger.debug(f"Stored password length: {len(stored_password)}")
             
-            # Verificación de contraseña mejorada
+            # VERIFICACIÓN DE CONTRASEÑA CORREGIDA
             password_match = False
             try:
-                password_match = check_password_hash(
-                    stored_password, 
-                    password,
-                    method='scrypt'  # Fuerza el uso de scrypt
-                )
+                # 1. Intento principal con verificación estándar
+                password_match = check_password_hash(stored_password, password)
                 
-                # Si falla, intenta con pbkdf2 por compatibilidad
+                # 2. Si falla, verificar si es un hash en texto plano
+                if not password_match and not stored_password.startswith(('pbkdf2:', 'scrypt:')):
+                    password_match = (stored_password == password)
+                    
+                    # Actualizar a hash si es texto plano
+                    if password_match:
+                        current_app.logger.info("Actualizando contraseña en texto plano a hash")
+                        new_hash = generate_password_hash(password, method='scrypt')
+                        UserModel.update_password(db, user['id'], new_hash)
+                
+                # 3. Si aún falla, intentar con método específico para pbkdf2
                 if not password_match and stored_password.startswith('pbkdf2:'):
-                    password_match = check_password_hash(
-                        stored_password, 
-                        password,
-                        method='pbkdf2:sha256'
-                    )
-                    
-                # Actualiza a scrypt si es un hash antiguo
+                    try:
+                        # Extraemos los componentes del hash
+                        parts = stored_password.split('$')
+                        if len(parts) >= 3:
+                            # Reconstruimos el hash en formato pbkdf2
+                            method, salt, hashval = parts[0], parts[1], parts[2]
+                            reconstructed_hash = f"{method}${salt}${hashval}"
+                            password_match = check_password_hash(reconstructed_hash, password)
+                    except Exception as e:
+                        current_app.logger.error(f"Error verificando pbkdf2: {str(e)}")
+                
+                # 4. Actualizar hashes pbkdf2 a scrypt
                 if password_match and stored_password.startswith('pbkdf2:'):
-                    current_app.logger.info("Actualizando hash de contraseña a scrypt")
-                    new_hash = generate_password_hash(password, method='scrypt', salt_length=16)
+                    current_app.logger.info("Actualizando hash pbkdf2 a scrypt")
+                    new_hash = generate_password_hash(password, method='scrypt')
                     UserModel.update_password(db, user['id'], new_hash)
-                    
+
             except Exception as e:
                 current_app.logger.error(f"Error en verificación: {str(e)}")
                 password_match = False

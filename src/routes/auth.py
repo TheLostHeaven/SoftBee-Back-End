@@ -130,8 +130,6 @@ def create_auth_routes(get_db_func, email_service):
                     db,
                     name=data['apiary_name'].strip(),
                     location=apiary_location.strip(),
-                    beehives_count=0,
-                    treatments=False,
                     user_id=user_id,
                 )
                 

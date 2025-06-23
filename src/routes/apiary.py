@@ -5,12 +5,12 @@ from src.database.db import get_db
 def create_apiary_routes():
     apiary_bp = Blueprint('apiary_routes', __name__)
 
-    @apiary_bp.route('/apiaries', methods=['GET'])
-    def get_all_apiaries():
+    @apiary_bp.route('user/<int:user_id>/apiaries', methods=['GET'])
+    def get_all_apiaries_for_user():
         db = get_db()
         controller = ApiaryController(db)
         try:
-            apiaries = controller.get_all_apiaries()
+            apiaries = controller.get_all_apiaries_for_user()
             return jsonify(apiaries), 200
         except Exception as e:
             return jsonify({'error': str(e)}), 500

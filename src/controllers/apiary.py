@@ -21,7 +21,7 @@ class ApiaryController:
             if cursor:
                 cursor.close()
     
-    def get_user_apiaries(self, user_id):
+    def get_all_apiaries_for_user(self, user_id):
         """Gets all apiaries for a user"""
         return self.model.get_by_user(self.db, user_id)
     

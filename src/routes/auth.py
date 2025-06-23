@@ -6,6 +6,7 @@ from src.middleware.jwt import generate_token
 from src.controllers.auth import AuthController
 from src.utils.email_service import EmailService
 import sqlite3
+import bcrypt
 
 def create_auth_routes(get_db_func, email_service):
     auth_bp = Blueprint('auth_routes', __name__)
@@ -102,13 +103,15 @@ def create_auth_routes(get_db_func, email_service):
                 return jsonify({'error': 'Password must be at least 8 characters'}), 400
             
             # Crear usuario con datos limpios
+            # Usar bcrypt para hashear la contraseña
+            hashed_password = bcrypt.hashpw(cleaned_data['password'].encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
             user_id = UserModel.create(
                 db,
                 nombre=cleaned_data['nombre'],
                 username=cleaned_data['username'],
                 email=cleaned_data['email'],
                 phone=cleaned_data['phone'],
-                password=generate_password_hash(cleaned_data['password'],method='scrypt',  )
+                password=hashed_password
             )
             # Validar creación exitosa
             if not user_id:
@@ -185,43 +188,24 @@ def create_auth_routes(get_db_func, email_service):
                 }), 401
 
             stored_password = user['password']
-            
-            # Logging de diagnóstico
-            current_app.logger.debug(f"Stored password: {stored_password[:50]}...")
-            current_app.logger.debug(f"Stored password length: {len(stored_password)}")
-            
             password_match = False
             try:
-                # Verificación directa para scrypt
-                if stored_password.startswith('scrypt:'):
+                # Si el hash es bcrypt
+                if stored_password.startswith('$2b$') or stored_password.startswith('$2a$'):
+                    password_match = bcrypt.checkpw(password.encode('utf-8'), stored_password.encode('utf-8'))
+                # Si es scrypt o pbkdf2, usar werkzeug y migrar a bcrypt si es correcto
+                elif stored_password.startswith('scrypt:') or stored_password.startswith('pbkdf2:'):
                     password_match = check_password_hash(stored_password, password)
-                
-                # Si falla, intentar con otros métodos
+                    if password_match:
+                        # Migrar a bcrypt
+                        new_hash = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+                        UserModel.update_password(db, user['id'], new_hash)
+                # Si es texto plano, comparar y migrar a bcrypt
                 else:
-                    password_match = check_password_hash(stored_password, password)
-                    
-                    # Manejo de contraseñas en texto plano
-                    if not password_match and not stored_password.startswith(('pbkdf2:', 'scrypt:')):
-                        password_match = (stored_password == password)
-                        if password_match:
-                            current_app.logger.info("Actualizando contraseña en texto plano a hash")
-                            new_hash = generate_password_hash(password, method='scrypt')
-                            UserModel.update_password(db, user['id'], new_hash)
-                    
-                    # Manejo de hashes pbkdf2
-                    elif not password_match and stored_password.startswith('pbkdf2:'):
-                        try:
-                            parts = stored_password.split('$')
-                            if len(parts) >= 3:
-                                reconstructed_hash = f"{parts[0]}${parts[1]}${parts[2]}"
-                                password_match = check_password_hash(reconstructed_hash, password)
-                                if password_match:
-                                    current_app.logger.info("Actualizando hash pbkdf2 a scrypt")
-                                    new_hash = generate_password_hash(password, method='scrypt')
-                                    UserModel.update_password(db, user['id'], new_hash)
-                        except Exception as e:
-                            current_app.logger.error(f"Error verificando pbkdf2: {str(e)}")
-
+                    password_match = (stored_password == password)
+                    if password_match:
+                        new_hash = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+                        UserModel.update_password(db, user['id'], new_hash)
             except Exception as e:
                 current_app.logger.error(f"Error en verificación: {str(e)}")
                 password_match = False

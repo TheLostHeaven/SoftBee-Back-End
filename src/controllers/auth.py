@@ -6,6 +6,7 @@ from src.models.password_reset_tokens import PasswordResetTokenModel
 import sqlite3
 import src.middleware.jwt as generate_token
 import src.models.users as UserModel
+import bcrypt
 
 class AuthController:
     def __init__(self, db, mail_service=None):
@@ -20,8 +21,8 @@ class AuthController:
         if UserModel.get_by_username(self.db, username):
             raise ValueError("El nombre de usuario ya existe")
             
-        # Crea el usuario con contraseña hasheada
-        hashed_password = generate_password_hash(password)
+        # Crea el usuario con contraseña hasheada usando bcrypt
+        hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
         return UserModel.create(
             self.db,
             nombre=nombre,
@@ -114,8 +115,8 @@ class AuthController:
         if not user_id:
             return False
             
-        # Actualiza la contraseña
-        hashed_password = generate_password_hash(new_password)
+        # Actualiza la contraseña usando bcrypt
+        hashed_password = bcrypt.hashpw(new_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
         UserModel.update_password(self.db, user_id, hashed_password)
         
         # Marca el token como usado

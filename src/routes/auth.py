@@ -191,7 +191,7 @@ def create_auth_routes(get_db_func, email_service):
                 'username': cleaned_data['username'],
                 'email': cleaned_data['email'],
                 'profile_picture_url': user_data['profile_picture_url'],
-                'apiary_id': apiary_id .id,  # Incluir ID del apiario creado
+                'apiary_id': apiary_id,
                 'message': 'Registration successful'
             }), 201
 

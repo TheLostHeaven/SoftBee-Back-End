@@ -132,7 +132,7 @@ def create_inventory_routes():
         try:
             cursor = db.cursor()
             cursor.execute(
-                'INSERT INTO inventory_general (name, quantity, unit) VALUES (%s, %s, %s) RETURNING id',
+                'INSERT INTO inventory (name, quantity, unit) VALUES (%s, %s, %s) RETURNING id',
                 (name, quantity, unit)
             )
             item_id = cursor.fetchone()[0]
@@ -148,7 +148,7 @@ def create_inventory_routes():
         db = get_db()
         try:
             cursor = db.cursor()
-            cursor.execute('SELECT * FROM inventory_general ORDER BY id')
+            cursor.execute('SELECT * FROM inventory ORDER BY id')
             columns = [desc[0] for desc in cursor.description]
             items = [dict(zip(columns, row)) for row in cursor.fetchall()]
             cursor.close()
@@ -161,7 +161,7 @@ def create_inventory_routes():
         db = get_db()
         try:
             cursor = db.cursor()
-            cursor.execute('SELECT * FROM inventory_general WHERE id = %s', (item_id,))
+            cursor.execute('SELECT * FROM inventory WHERE id = %s', (item_id,))
             row = cursor.fetchone()
             if not row:
                 cursor.close()
@@ -188,7 +188,7 @@ def create_inventory_routes():
         try:
             cursor = db.cursor()
             cursor.execute(
-                f'UPDATE inventory_general SET {", ".join(fields)} WHERE id = %s',
+                f'UPDATE inventory SET {", ".join(fields)} WHERE id = %s',
                 params
             )
             db.commit()
@@ -206,7 +206,7 @@ def create_inventory_routes():
         db = get_db()
         try:
             cursor = db.cursor()
-            cursor.execute('DELETE FROM inventory_general WHERE id = %s', (item_id,))
+            cursor.execute('DELETE FROM inventory WHERE id = %s', (item_id,))
             db.commit()
             if cursor.rowcount == 0:
                 cursor.close()

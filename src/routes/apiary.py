@@ -86,5 +86,15 @@ def create_apiary_routes():
             return jsonify({'message': 'Apiary deleted successfully'}), 200
         except Exception as e:
             return jsonify({'error': str(e)}), 500
+        
+    @apiary_bp.route('/health', methods=['GET'])
+    def health_check():
+        db = get_db()
+        try:
+            # Verifica que la conexión a la base de datos funciona
+            db.execute("SELECT 1")
+            return jsonify({'status': 'healthy'}), 200
+        except Exception as e:
+            return jsonify({'error': str(e)}), 500
 
     return apiary_bp

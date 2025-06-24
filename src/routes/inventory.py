@@ -45,7 +45,7 @@ def create_inventory_routes():
     def get_user_inventory():
         db = get_db()
         controller = InventoryController(db)
-        current_user_id = get_jwt_identity()
+        current_user_id =' user_id '
 
         try:
             items = controller.get_user_inventory(current_user_id)
@@ -117,5 +117,106 @@ def create_inventory_routes():
             return jsonify({'error': 'Amount must be an integer'}), 400
         except Exception as e:
             return jsonify({'error': str(e)}), 400
+
+    # --- CRUD GENERAL PARA INVENTARIO GENERAL (PROVISIONAL) ---
+
+    @inventory_bp.route('/inventory', methods=['POST'])
+    def create_general_item():
+        db = get_db()
+        data = request.get_json()
+        name = data.get('name')
+        quantity = data.get('quantity', 0)
+        unit = data.get('unit', 'unit')
+        if not name:
+            return jsonify({'error': 'Name is required'}), 400
+        try:
+            cursor = db.cursor()
+            cursor.execute(
+                'INSERT INTO inventory_general (name, quantity, unit) VALUES (%s, %s, %s) RETURNING id',
+                (name, quantity, unit)
+            )
+            item_id = cursor.fetchone()[0]
+            db.commit()
+            cursor.close()
+            return jsonify({'id': item_id, 'message': 'Item created'}), 201
+        except Exception as e:
+            db.rollback()
+            return jsonify({'error': str(e)}), 500
+
+    @inventory_bp.route('/inventory', methods=['GET'])
+    def get_all_general_items():
+        db = get_db()
+        try:
+            cursor = db.cursor()
+            cursor.execute('SELECT * FROM inventory_general ORDER BY id')
+            columns = [desc[0] for desc in cursor.description]
+            items = [dict(zip(columns, row)) for row in cursor.fetchall()]
+            cursor.close()
+            return jsonify(items), 200
+        except Exception as e:
+            return jsonify({'error': str(e)}), 500
+
+    @inventory_bp.route('/inventory/<int:item_id>', methods=['GET'])
+    def get_general_item(item_id):
+        db = get_db()
+        try:
+            cursor = db.cursor()
+            cursor.execute('SELECT * FROM inventory_general WHERE id = %s', (item_id,))
+            row = cursor.fetchone()
+            if not row:
+                cursor.close()
+                return jsonify({'error': 'Item not found'}), 404
+            columns = [desc[0] for desc in cursor.description]
+            cursor.close()
+            return jsonify(dict(zip(columns, row))), 200
+        except Exception as e:
+            return jsonify({'error': str(e)}), 500
+
+    @inventory_bp.route('/inventory/<int:item_id>', methods=['PUT'])
+    def update_general_item(item_id):
+        db = get_db()
+        data = request.get_json()
+        fields = []
+        params = []
+        for key in ['name', 'quantity', 'unit']:
+            if key in data:
+                fields.append(f"{key} = %s")
+                params.append(data[key])
+        if not fields:
+            return jsonify({'error': 'No fields to update'}), 400
+        params.append(item_id)
+        try:
+            cursor = db.cursor()
+            cursor.execute(
+                f'UPDATE inventory_general SET {", ".join(fields)} WHERE id = %s',
+                params
+            )
+            db.commit()
+            if cursor.rowcount == 0:
+                cursor.close()
+                return jsonify({'error': 'Item not found'}), 404
+            cursor.close()
+            return jsonify({'message': 'Item updated'}), 200
+        except Exception as e:
+            db.rollback()
+            return jsonify({'error': str(e)}), 500
+
+    @inventory_bp.route('/inventory/<int:item_id>', methods=['DELETE'])
+    def delete_general_item(item_id):
+        db = get_db()
+        try:
+            cursor = db.cursor()
+            cursor.execute('DELETE FROM inventory_general WHERE id = %s', (item_id,))
+            db.commit()
+            if cursor.rowcount == 0:
+                cursor.close()
+                return jsonify({'error': 'Item not found'}), 404
+            cursor.close()
+            return jsonify({'message': 'Item deleted'}), 200
+        except Exception as e:
+            db.rollback()
+            return jsonify({'error': str(e)}), 500
+
+    # --- FIN CRUD GENERAL INVENTARIO ---
 
     return inventory_bp

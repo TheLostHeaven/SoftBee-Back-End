@@ -5,7 +5,7 @@ from src.database.db import get_db
 def create_inventory_routes():
     inventory_bp = Blueprint('inventory_routes', __name__)
 
-    @inventory_bp.route('/inventory', methods=['POST'])
+    @inventory_bp.route('/apiaries/<int:apiary_id>/inventory', methods=['POST'])
     def create_item():
         db = get_db()
         controller = InventoryController(db)
@@ -40,6 +40,18 @@ def create_inventory_routes():
         controller = InventoryController(db)
         items = controller.get_apiary_items(apiary_id)
         return jsonify(items), 200
+
+    @inventory_bp.route('/user/inventory', methods=['GET'])
+    def get_user_inventory():
+        db = get_db()
+        controller = InventoryController(db)
+        current_user_id = get_jwt_identity()
+
+        try:
+            items = controller.get_user_inventory(current_user_id)
+            return jsonify(items), 200
+        except Exception as e:
+            return jsonify({'error': str(e)}), 400
 
     @inventory_bp.route('/inventory/<int:item_id>', methods=['PUT'])
     def update_item(item_id):

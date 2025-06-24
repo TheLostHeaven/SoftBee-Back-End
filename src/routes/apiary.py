@@ -1,19 +1,10 @@
 from flask import Blueprint, request, jsonify
 from ..controllers.apiary import ApiaryController
 from src.database.db import get_db
+from src.models.users import UserModel
 
 def create_apiary_routes():
     apiary_bp = Blueprint('apiary_routes', __name__)
-
-    @apiary_bp.route('/apiaries', methods=['GET'])
-    def get_all_apiaries():
-        db = get_db()
-        controller = ApiaryController(db)
-        try:
-            apiaries = controller.get_all_apiaries()
-            return jsonify(apiaries), 200
-        except Exception as e:
-            return jsonify({'error': str(e)}), 500
 
     @apiary_bp.route('/apiaries', methods=['POST'])
     def create_apiary():
@@ -24,23 +15,24 @@ def create_apiary_routes():
         if 'user_id' not in data or 'name' not in data:
             return jsonify({'error': 'User ID and name are required'}), 400
 
-        # Validar que el usuario exista
-        cursor = db.cursor()
-        cursor.execute("SELECT id FROM users WHERE id = ?", (data['user_id'],))
-        user = cursor.fetchone()
-        
-        if user is None:  # ¡El usuario no existe!
-            return jsonify({'error': 'User ID does not exist'}), 404  # 404 Not Found
+        # Validar existencia del usuario
+        user = UserModel.get_by_id(db, data['user_id'])
+        if not user:
+            return jsonify({'error': 'User not found'}), 404
 
         try:
             apiary_id = controller.create_apiary(
                 data['user_id'],
                 data['name'],
-                data.get('location')  # .get() para campos opcionales
+                data.get('location')
             )
+            if not apiary_id:
+                return jsonify({'error': 'Apiary could not be created'}), 400
+            db.commit()
             return jsonify({'id': apiary_id}), 201
         except Exception as e:
-            return jsonify({'error': str(e)}), 400
+            db.rollback()
+            return jsonify({'error': str(e)}), 500
 
     @apiary_bp.route('/apiaries/<int:apiary_id>', methods=['GET'])
     def get_apiary(apiary_id):
@@ -58,8 +50,12 @@ def create_apiary_routes():
     def get_user_apiaries(user_id):
         db = get_db()
         controller = ApiaryController(db)
+        # Validar existencia del usuario
+        user = UserModel.get_by_id(db, user_id)
+        if not user:
+            return jsonify({'error': 'User not found'}), 404
         try:
-            apiaries = controller.get_user_apiaries(user_id)
+            apiaries = controller.get_all_apiaries_for_user(user_id)
             return jsonify(apiaries), 200
         except Exception as e:
             return jsonify({'error': str(e)}), 500
@@ -74,7 +70,7 @@ def create_apiary_routes():
         try:
             updated = controller.update_apiary(apiary_id, **data)
             if not updated:
-                return jsonify({'error': 'Apiary not found or not updated'}), 404
+                return jsonify({'error': 'Apiary not found or user does not exist'}), 404
             return jsonify({'message': 'Apiary updated successfully'}), 200
         except Exception as e:
             return jsonify({'error': str(e)}), 400
@@ -86,7 +82,7 @@ def create_apiary_routes():
         try:
             deleted = controller.delete_apiary(apiary_id)
             if not deleted:
-                return jsonify({'error': 'Apiary not found or not deleted'}), 404
+                return jsonify({'error': 'Apiary not found or user does not exist'}), 404
             return jsonify({'message': 'Apiary deleted successfully'}), 200
         except Exception as e:
             return jsonify({'error': str(e)}), 500

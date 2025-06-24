@@ -1,29 +1,35 @@
 import os
 from flask import g, current_app
 import psycopg2
-import sqlite3
+from urllib.parse import quote_plus  # Importa para codificar la contraseña
 
 def get_db():
     if 'db' not in g:
-        # Entorno de producción (Render)
-        if 'RENDER' in os.environ:
-            database_url = os.getenv('DATABASE_URL')
+        database_url = os.getenv('DATABASE_URL')
+        sslmode_require = os.getenv('SSL_MODE', '') == 'require'
+
+        if not database_url:
+            # Configuración local
+            user = os.getenv('PGUSER', 'postgres')
+            password = os.getenv('PGPASSWORD', 'postgres')
+            host = os.getenv('PGHOST', 'localhost')
+            port = os.getenv('PGPORT', '5432')
+            dbname = os.getenv('PGDATABASE', 'softbee')
             
-            # Corrección para formato de Render
-            if database_url and database_url.startswith("postgres://"):
-                database_url = database_url.replace("postgres://", "postgresql://", 1)
-            
-            g.db = psycopg2.connect(
-                database_url,
-                sslmode='require'  # SSL obligatorio en Render
-            )
-        # Entorno de desarrollo (SQLite)
+            # Codifica la contraseña por si tiene caracteres especiales
+            password_encoded = quote_plus(password)
+            database_url = f"postgresql://{user}:{password_encoded}@{host}:{port}/{dbname}"
         else:
-            g.db = sqlite3.connect(
-                os.path.join(current_app.instance_path, 'softbee.sqlite'),
-                detect_types=sqlite3.PARSE_DECLTYPES
-            )
-            g.db.row_factory = sqlite3.Row
+            if database_url.startswith("postgres://"):
+                database_url = database_url.replace("postgres://", "postgresql://", 1)
+        
+        # Agrega sslmode=require al URI si es necesario
+        if sslmode_require and 'sslmode=' not in database_url:
+            separator = '?' if '?' not in database_url else '&'
+            database_url += f"{separator}sslmode=require"
+
+        # Conexión SOLO con el URI (sin parámetros adicionales)
+        g.db = psycopg2.connect(database_url)
     return g.db
 
 def close_db(e=None):
@@ -47,6 +53,7 @@ def init_app(app):
         from src.models.questions import QuestionModel
         from src.models.inventory import InventoryModel
         from src.models.password_reset_tokens import PasswordResetTokenModel
+        from src.models.monitoreo import MonitoreoModel
         
         # Crear tablas
         UserModel.init_db(db)
@@ -58,6 +65,4 @@ def init_app(app):
         # InspectionModel.init_db(db)
         ApiaryAccessModel.init_db(db)
         PasswordResetTokenModel.init_db(db)
-        
-        if not 'RENDER' in os.environ:
-            db.commit()
+        MonitoreoModel.init_db(db)

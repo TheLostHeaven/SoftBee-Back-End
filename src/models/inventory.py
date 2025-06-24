@@ -131,3 +131,14 @@ class InventoryModel:
             'UPDATE inventory SET quantity = quantity + %s, updated_at = CURRENT_TIMESTAMP WHERE id = %s',
             (amount, item_id)
         )
+
+    @staticmethod
+    def get_by_user_id(db, user_id):
+        """Obtiene todos los items de inventario de todos los apiarios de un usuario"""
+        return InventoryModel._execute_query(
+            db,
+            '''SELECT i.* FROM inventory i
+            JOIN apiaries a ON i.apiary_id = a.id
+            WHERE a.user_id = ?''',
+            (user_id,)
+        )

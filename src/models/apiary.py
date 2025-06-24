@@ -11,7 +11,9 @@ class ApiaryModel:
                     id SERIAL PRIMARY KEY,
                     user_id INTEGER NOT NULL,
                     name VARCHAR(100) NOT NULL,
-                    location VARCHAR(20),
+                    location VARCHAR(50),   
+                    beehives_count INTEGER DEFAULT 0,
+                    treatments BOOLEAN DEFAULT FALSE,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
@@ -40,14 +42,21 @@ class ApiaryModel:
         return cursor
     
     @staticmethod
-    def create(db, user_id, name, location=None):
-        cursor = ApiaryModel._execute_update(
-            db,
-            'INSERT INTO apiaries (user_id, name, location) VALUES (%s, %s, %s) RETURNING id',
-            (user_id, name, location))
-        apiary_id = cursor.fetchone()[0]
-        cursor.close()
-        return apiary_id
+    def create(db, user_id, name, location=None, beehives_count=0, treatments=False):
+        try:
+            cursor = db.cursor()
+            cursor.execute(
+                'INSERT INTO apiaries (user_id, name, location, beehives_count, treatments) VALUES (%s, %s, %s, %s, %s) RETURNING id',
+                (user_id, name, location, beehives_count, treatments)
+            )
+            apiary_id = cursor.fetchone()[0]
+            db.commit()
+            return apiary_id
+        except Exception as e:
+            db.rollback()
+            raise e
+        finally:
+            cursor.close()
     
     @staticmethod
     def get_by_id(db, apiary_id):

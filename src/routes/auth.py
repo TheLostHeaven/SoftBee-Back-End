@@ -4,6 +4,7 @@ from src.database.db import get_db
 from src.middleware.jwt import generate_token
 from src.controllers.auth import AuthController
 from src.utils.email_service import EmailService
+from src.models.apiary import ApiaryModel
 import sqlite3
 import bcrypt
 
@@ -84,10 +85,15 @@ def create_auth_routes(get_db_func, email_service):
             current_app.logger.debug(f"Raw JSON data: {data}")
             db = get_db_func()
             
-            # Limpia y valida los datos
+            # Limpia y valida los datos - AÑADIR CAMPOS DE APIARIO
             try:
                 cleaned_data = clean_user_input(data)
                 current_app.logger.debug(f"Cleaned data: {cleaned_data}")
+                
+                # Validar campos adicionales para el apiario
+                if 'apiary_name' not in data or not data['apiary_name'].strip():
+                    raise ValueError("El nombre del apiario es requerido")
+                    
             except ValueError as ve:
                 current_app.logger.warning(f"Validation error: {str(ve)}")
                 return jsonify({'error': str(ve)}), 400
@@ -100,9 +106,8 @@ def create_auth_routes(get_db_func, email_service):
             # Validación de longitud de contraseña
             if len(cleaned_data['password']) < 8:
                 return jsonify({'error': 'Password must be at least 8 characters'}), 400
-            
-            # Crear usuario con datos limpios
-            # Usar bcrypt para hashear la contraseña
+
+            # Crear usuario
             hashed_password = bcrypt.hashpw(cleaned_data['password'].encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
             user_id = UserModel.create(
                 db,
@@ -112,11 +117,58 @@ def create_auth_routes(get_db_func, email_service):
                 phone=cleaned_data['phone'],
                 password=hashed_password
             )
-            # Validar creación exitosa
+
+            # Validar creación exitosa del usuario
             if not user_id:
                 current_app.logger.error('User creation returned invalid ID')
                 return jsonify({'error': 'User creation failed'}), 500
             
+            # CREAR APIARIO ASOCIADO
+            try:
+                    # Obtener y validar campos del apiario
+                    apiary_name = data['apiary_name'].strip()
+                    if not apiary_name:
+                        raise ValueError("El nombre del apiario es requerido")
+                        
+                    apiary_location = data.get('apiary_location', 'Ubicación no especificada').strip()
+                    
+                    # Obtener y convertir beehives_count
+                    try:
+                        beehives_count = int(data.get('beehives_count', 0))
+                    except (TypeError, ValueError):
+                        beehives_count = 0
+                        
+                    # Obtener y convertir treatments
+                    treatments = data.get('treatments', False)
+                    if isinstance(treatments, str):
+                        treatments = treatments.lower() in ['true', '1', 'yes']
+                    
+                    # Crear apiario
+                    apiary_id = ApiaryModel.create(
+                        db,
+                        user_id=user_id,
+                        name=apiary_name,
+                        location=apiary_location,
+                        beehives_count=beehives_count,
+                        treatments=treatments
+                    )
+                    
+                    # Verificar creación exitosa
+                    if not apiary_id or apiary_id <= 0:
+                        current_app.logger.error(f'Apiary creation returned invalid ID: {apiary_id}')
+                        UserModel.delete(db, user_id)
+                        return jsonify({'error': 'Apiary creation failed (invalid ID)'}), 500
+                        
+                    current_app.logger.debug(f"Apiary created: ID {apiary_id} for user {user_id}")
+            
+            except Exception as apiary_error:
+                current_app.logger.error(f"Apiary creation error: {str(apiary_error)}")
+                UserModel.delete(db, user_id)
+                # Mensaje más informativo para desarrollo
+                return jsonify({
+                    'error': 'Failed to create associated apiary',
+                    'details': str(apiary_error)
+                }), 500
 
             # Obtener usuario creado
             user_data = UserModel.get_by_id(db, user_id)
@@ -124,8 +176,6 @@ def create_auth_routes(get_db_func, email_service):
                 current_app.logger.error(f'User not found after creation, ID: {user_id}')
                 return jsonify({'error': 'User retrieval failed'}), 500
             
-
-                
             # Añadir URL de la foto de perfil
             user_data = get_user_with_profile(user_data)
             
@@ -141,6 +191,7 @@ def create_auth_routes(get_db_func, email_service):
                 'username': cleaned_data['username'],
                 'email': cleaned_data['email'],
                 'profile_picture_url': user_data['profile_picture_url'],
+                'apiary_id': apiary_id,
                 'message': 'Registration successful'
             }), 201
 
@@ -152,6 +203,7 @@ def create_auth_routes(get_db_func, email_service):
         except Exception as err:
             current_app.logger.error(f'Unexpected error: {str(err)}', exc_info=True)
             return jsonify({'error': 'Internal server error'}), 500
+
 
     @auth_bp.route('/login', methods=['POST'])
     def auth_login():

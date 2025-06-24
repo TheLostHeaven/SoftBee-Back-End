@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify
 from datetime import datetime 
-from ..controllers.monitoreo import MonitoreoController
+from src.controllers.monitoreo import MonitoreoController
 from src.database.db import get_db
 
 def create_monitoreo_routes():

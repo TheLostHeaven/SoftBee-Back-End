@@ -4,18 +4,18 @@ from datetime import datetime
 class MonitoreoModel:
     @staticmethod
     def init_db(db):
-        """Inicializa las tablas de monitoreo"""
+        """Inicializa las tablas de monitoreo en PostgreSQL"""
         cursor = db.cursor()
         try:
-            # Tabla de monitoreos
+            # Tabla de monitoreos con tipos específicos de PostgreSQL
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS monitoreos (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    id SERIAL PRIMARY KEY,
                     id_colmena INTEGER NOT NULL,
                     id_apiario INTEGER NOT NULL,
-                    fecha TEXT NOT NULL,
-                    datos_json TEXT,
-                    sincronizado INTEGER DEFAULT 0,
+                    fecha TIMESTAMP NOT NULL,
+                    datos_json JSONB,
+                    sincronizado BOOLEAN DEFAULT FALSE,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     FOREIGN KEY (id_colmena) REFERENCES colmenas(id) ON DELETE CASCADE,
@@ -23,10 +23,10 @@ class MonitoreoModel:
                 )
             ''')
             
-            # Tabla de respuestas
+            # Tabla de respuestas con tipos optimizados
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS respuestas_monitoreo (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    id SERIAL PRIMARY KEY,
                     monitoreo_id INTEGER NOT NULL,
                     pregunta_id TEXT NOT NULL,
                     pregunta_texto TEXT NOT NULL,
@@ -37,6 +37,24 @@ class MonitoreoModel:
                 )
             ''')
             
+            # Crear índices para mejor rendimiento
+            cursor.execute('''
+                CREATE INDEX IF NOT EXISTS idx_monitoreos_fecha 
+                ON monitoreos (fecha)
+            ''')
+            cursor.execute('''
+                CREATE INDEX IF NOT EXISTS idx_monitoreos_apiario 
+                ON monitoreos (id_apiario)
+            ''')
+            cursor.execute('''
+                CREATE INDEX IF NOT EXISTS idx_monitoreos_colmena 
+                ON monitoreos (id_colmena)
+            ''')
+            cursor.execute('''
+                CREATE INDEX IF NOT EXISTS idx_respuestas_monitoreo_id 
+                ON respuestas_monitoreo (monitoreo_id)
+            ''')
+            
             db.commit()
         except Exception as e:
             db.rollback()
@@ -45,34 +63,48 @@ class MonitoreoModel:
             cursor.close()
 
     @staticmethod
+    def _rows_to_dicts(cursor):
+        """Convierte los resultados del cursor en diccionarios"""
+        if cursor.description is None:
+            return []
+        columns = [desc[0] for desc in cursor.description]
+        return [dict(zip(columns, row)) for row in cursor.fetchall()]
+
+    @staticmethod
     def create(db, id_colmena, id_apiario, fecha, respuestas=None, datos_adicionales=None):
-        """Crea un nuevo monitoreo"""
+        """Crea un nuevo monitoreo en PostgreSQL"""
         cursor = db.cursor()
         try:
-            # Crear el monitoreo principal
+            # Usar tipo JSONB nativo de PostgreSQL
             datos_json = json.dumps(datos_adicionales) if datos_adicionales else None
             
+            # Insertar monitoreo principal y obtener ID creado
             cursor.execute('''
                 INSERT INTO monitoreos (id_colmena, id_apiario, fecha, datos_json)
-                VALUES (?, ?, ?, ?)
+                VALUES (%s, %s, %s, %s)
+                RETURNING id
             ''', (id_colmena, id_apiario, fecha, datos_json))
             
-            monitoreo_id = cursor.lastrowid
+            monitoreo_id = cursor.fetchone()[0]
             
-            # Insertar respuestas si las hay
+            # Insertar respuestas usando ejecución múltiple si hay muchas
             if respuestas:
-                for respuesta in respuestas:
-                    cursor.execute('''
-                        INSERT INTO respuestas_monitoreo 
-                        (monitoreo_id, pregunta_id, pregunta_texto, respuesta, tipo_respuesta)
-                        VALUES (?, ?, ?, ?, ?)
-                    ''', (
+                respuestas_data = [
+                    (
                         monitoreo_id,
                         respuesta.get('pregunta_id'),
                         respuesta.get('pregunta_texto'),
                         str(respuesta.get('respuesta')),
                         respuesta.get('tipo_respuesta', 'texto')
-                    ))
+                    )
+                    for respuesta in respuestas
+                ]
+                
+                cursor.executemany('''
+                    INSERT INTO respuestas_monitoreo 
+                    (monitoreo_id, pregunta_id, pregunta_texto, respuesta, tipo_respuesta)
+                    VALUES (%s, %s, %s, %s, %s)
+                ''', respuestas_data)
             
             db.commit()
             return monitoreo_id
@@ -94,30 +126,32 @@ class MonitoreoModel:
                 FROM monitoreos m
                 JOIN apiarios a ON m.id_apiario = a.id
                 JOIN colmenas c ON m.id_colmena = c.id
-                WHERE m.id = ?
+                WHERE m.id = %s
             ''', (monitoreo_id,))
             
-            row = cursor.fetchone()
-            if not row:
+            monitoreo = cursor.fetchone()
+            if not monitoreo:
                 return None
             
-            monitoreo = dict(row)
+            # Convertir a diccionario
+            columns = [desc[0] for desc in cursor.description]
+            monitoreo_dict = dict(zip(columns, monitoreo))
             
             # Obtener respuestas
             cursor.execute('''
                 SELECT * FROM respuestas_monitoreo 
-                WHERE monitoreo_id = ?
+                WHERE monitoreo_id = %s
                 ORDER BY id
             ''', (monitoreo_id,))
             
-            respuestas = [dict(row) for row in cursor.fetchall()]
-            monitoreo['respuestas'] = respuestas
+            respuestas = MonitoreoModel._rows_to_dicts(cursor)
+            monitoreo_dict['respuestas'] = respuestas
             
-            # Parsear datos JSON si existen
-            if monitoreo.get('datos_json'):
-                monitoreo['datos_adicionales'] = json.loads(monitoreo['datos_json'])
+            # Los datos JSONB se parsean automáticamente
+            if monitoreo_dict.get('datos_json'):
+                monitoreo_dict['datos_adicionales'] = monitoreo_dict['datos_json']
             
-            return monitoreo
+            return monitoreo_dict
             
         finally:
             cursor.close()
@@ -133,11 +167,10 @@ class MonitoreoModel:
                 JOIN apiarios a ON m.id_apiario = a.id
                 JOIN colmenas c ON m.id_colmena = c.id
                 ORDER BY m.fecha DESC
-                LIMIT ? OFFSET ?
+                LIMIT %s OFFSET %s
             ''', (limit, offset))
             
-            return [dict(row) for row in cursor.fetchall()]
-            
+            return MonitoreoModel._rows_to_dicts(cursor)
         finally:
             cursor.close()
 
@@ -150,12 +183,11 @@ class MonitoreoModel:
                 SELECT m.*, c.numero_colmena
                 FROM monitoreos m
                 JOIN colmenas c ON m.id_colmena = c.id
-                WHERE m.id_apiario = ?
+                WHERE m.id_apiario = %s
                 ORDER BY m.fecha DESC
             ''', (apiario_id,))
             
-            return [dict(row) for row in cursor.fetchall()]
-            
+            return MonitoreoModel._rows_to_dicts(cursor)
         finally:
             cursor.close()
 
@@ -168,36 +200,39 @@ class MonitoreoModel:
                 SELECT m.*, a.nombre as apiario_nombre
                 FROM monitoreos m
                 JOIN apiarios a ON m.id_apiario = a.id
-                WHERE m.id_colmena = ?
+                WHERE m.id_colmena = %s
                 ORDER BY m.fecha DESC
             ''', (colmena_id,))
             
-            return [dict(row) for row in cursor.fetchall()]
-            
+            return MonitoreoModel._rows_to_dicts(cursor)
         finally:
             cursor.close()
 
     @staticmethod
     def update(db, monitoreo_id, **kwargs):
-        """Actualiza un monitoreo"""
+        """Actualiza un monitoreo en PostgreSQL"""
         if not kwargs:
             raise ValueError("No fields to update")
         
         cursor = db.cursor()
         try:
-            fields = []
+            set_clause = []
             params = []
             
             for field, value in kwargs.items():
                 if field in ['id_colmena', 'id_apiario', 'fecha', 'datos_json', 'sincronizado']:
-                    fields.append(f"{field} = ?")
+                    set_clause.append(f"{field} = %s")
                     params.append(value)
             
-            if not fields:
+            if not set_clause:
                 raise ValueError("No valid fields to update")
             
             params.append(monitoreo_id)
-            query = f"UPDATE monitoreos SET {', '.join(fields)}, updated_at = CURRENT_TIMESTAMP WHERE id = ?"
+            query = f'''
+                UPDATE monitoreos 
+                SET {', '.join(set_clause)}, updated_at = CURRENT_TIMESTAMP 
+                WHERE id = %s
+            '''
             
             cursor.execute(query, params)
             db.commit()
@@ -215,12 +250,9 @@ class MonitoreoModel:
         """Elimina un monitoreo y sus respuestas"""
         cursor = db.cursor()
         try:
-            # Las respuestas se eliminan automáticamente por CASCADE
-            cursor.execute('DELETE FROM monitoreos WHERE id = ?', (monitoreo_id,))
+            cursor.execute('DELETE FROM monitoreos WHERE id = %s', (monitoreo_id,))
             db.commit()
-            
             return cursor.rowcount > 0
-            
         except Exception as e:
             db.rollback()
             raise e
@@ -234,13 +266,12 @@ class MonitoreoModel:
         try:
             cursor.execute('''
                 UPDATE monitoreos 
-                SET sincronizado = 1, updated_at = CURRENT_TIMESTAMP 
-                WHERE id = ?
+                SET sincronizado = TRUE, updated_at = CURRENT_TIMESTAMP 
+                WHERE id = %s
             ''', (monitoreo_id,))
             
             db.commit()
             return cursor.rowcount > 0
-            
         except Exception as e:
             db.rollback()
             raise e
@@ -257,11 +288,10 @@ class MonitoreoModel:
                 FROM monitoreos m
                 JOIN apiarios a ON m.id_apiario = a.id
                 JOIN colmenas c ON m.id_colmena = c.id
-                WHERE m.sincronizado = 0
+                WHERE m.sincronizado = FALSE
                 ORDER BY m.fecha ASC
-            ''', )
+            ''')
             
-            return [dict(row) for row in cursor.fetchall()]
-            
+            return MonitoreoModel._rows_to_dicts(cursor)
         finally:
             cursor.close()

@@ -1,5 +1,4 @@
 from base_model import BaseModel
-from datetime import datetime, timedelta
 
 class NotificationModel(BaseModel):
 

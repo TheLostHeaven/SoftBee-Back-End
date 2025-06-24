@@ -1,6 +1,5 @@
 from datetime import datetime
-import json
-from ..models.monitoreo import MonitoreoModel
+from src.models.monitoreo import MonitoreoModel
 
 class MonitoreoController:
     def __init__(self, db):
@@ -14,12 +13,12 @@ class MonitoreoController:
         
         # Validar que la colmena existe
         cursor = self.db.cursor()
-        cursor.execute("SELECT id FROM colmenas WHERE id = ?", (id_colmena,))
+        cursor.execute("SELECT id FROM colmenas WHERE id = %s", (id_colmena,))
         if not cursor.fetchone():
             raise ValueError("Colmena no encontrada")
         
         # Validar que el apiario existe
-        cursor.execute("SELECT id FROM apiarios WHERE id = ?", (id_apiario,))
+        cursor.execute("SELECT id FROM apiarios WHERE id = %s", (id_apiario,))
         if not cursor.fetchone():
             raise ValueError("Apiario no encontrado")
         
@@ -72,10 +71,10 @@ class MonitoreoController:
         cursor.execute("SELECT COUNT(*) FROM monitoreos")
         total_monitoreos = cursor.fetchone()[0]
         
-        # Monitoreos del último mes
+        # Monitoreos del último mes (PostgreSQL)
         cursor.execute("""
             SELECT COUNT(*) FROM monitoreos 
-            WHERE fecha >= datetime('now', '-30 days')
+            WHERE fecha >= CURRENT_DATE - INTERVAL '30 days'
         """)
         monitoreos_mes = cursor.fetchone()[0]
         

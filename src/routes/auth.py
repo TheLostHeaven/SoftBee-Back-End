@@ -125,30 +125,50 @@ def create_auth_routes(get_db_func, email_service):
             
             # CREAR APIARIO ASOCIADO
             try:
-                apiary_location = data.get('location', 'Ubicación no especificada')
-                new_apiary = ApiaryModel.create(
-                    db,
-                    name=data['apiary_name'].strip(),
-                    location=apiary_location.strip(),
-                    user_id=user_id,
-                    beehives_count= data['beehives_count'],
-                    treatments=data['treatments'],
-
-                )
-                
-                if not new_apiary or not hasattr(new_apiary, 'id'):
-                    current_app.logger.error('Apiary creation failed')
-                    # Intentar eliminar el usuario creado si falla el apiario
-                    UserModel.delete(db, user_id)
-                    return jsonify({'error': 'Apiary creation failed'}), 500
+                    # Obtener y validar campos del apiario
+                    apiary_name = data['apiary_name'].strip()
+                    if not apiary_name:
+                        raise ValueError("El nombre del apiario es requerido")
+                        
+                    apiary_location = data.get('apiary_location', 'Ubicación no especificada').strip()
                     
-                current_app.logger.debug(f"Apiary created: ID {new_apiary.id} for user {user_id}")
-                
+                    # Obtener y convertir beehives_count
+                    try:
+                        beehives_count = int(data.get('beehives_count', 0))
+                    except (TypeError, ValueError):
+                        beehives_count = 0
+                        
+                    # Obtener y convertir treatments
+                    treatments = data.get('treatments', False)
+                    if isinstance(treatments, str):
+                        treatments = treatments.lower() in ['true', '1', 'yes']
+                    
+                    # Crear apiario
+                    apiary_id = ApiaryModel.create(
+                        db,
+                        user_id=user_id,
+                        name=apiary_name,
+                        location=apiary_location,
+                        beehives_count=beehives_count,
+                        treatments=treatments
+                    )
+                    
+                    # Verificar creación exitosa
+                    if not apiary_id or apiary_id <= 0:
+                        current_app.logger.error(f'Apiary creation returned invalid ID: {apiary_id}')
+                        UserModel.delete(db, user_id)
+                        return jsonify({'error': 'Apiary creation failed (invalid ID)'}), 500
+                        
+                    current_app.logger.debug(f"Apiary created: ID {apiary_id} for user {user_id}")
+            
             except Exception as apiary_error:
                 current_app.logger.error(f"Apiary creation error: {str(apiary_error)}")
-                # Revertir creación de usuario si falla el apiario
                 UserModel.delete(db, user_id)
-                return jsonify({'error': 'Failed to create associated apiary'}), 500
+                # Mensaje más informativo para desarrollo
+                return jsonify({
+                    'error': 'Failed to create associated apiary',
+                    'details': str(apiary_error)
+                }), 500
 
             # Obtener usuario creado
             user_data = UserModel.get_by_id(db, user_id)
@@ -171,7 +191,7 @@ def create_auth_routes(get_db_func, email_service):
                 'username': cleaned_data['username'],
                 'email': cleaned_data['email'],
                 'profile_picture_url': user_data['profile_picture_url'],
-                'apiary_id': new_apiary.id,  # Incluir ID del apiario creado
+                'apiary_id': apiary_id .id,  # Incluir ID del apiario creado
                 'message': 'Registration successful'
             }), 201
 

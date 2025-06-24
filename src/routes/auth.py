@@ -131,6 +131,9 @@ def create_auth_routes(get_db_func, email_service):
                     name=data['apiary_name'].strip(),
                     location=apiary_location.strip(),
                     user_id=user_id,
+                    beehives_count= data['beehives_count'],
+                    treatments=data['treatments'],
+
                 )
                 
                 if not new_apiary or not hasattr(new_apiary, 'id'):

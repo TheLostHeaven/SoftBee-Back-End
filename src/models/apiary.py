@@ -13,7 +13,7 @@ class ApiaryModel:
                     name VARCHAR(100) NOT NULL,
                     location VARCHAR(50),   
                     beehives_count INTEGER DEFAULT 0,
-                    Treatments BOOLEAN DEFAULT FALSE,
+                    treatments BOOLEAN DEFAULT FALSE,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE

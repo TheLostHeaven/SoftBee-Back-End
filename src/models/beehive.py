@@ -10,7 +10,7 @@ class BeehiveModel:
                 CREATE TABLE IF NOT EXISTS beehives (
                     id SERIAL PRIMARY KEY,
                     apiary_id INTEGER NOT NULL,
-                    hive_number INTEGER NOT NULL,
+                    beehive_number INTEGER NOT NULL,
                     activity_level TEXT CHECK(activity_level IN ('Baja', 'Media', 'Alta')),
                     bee_population TEXT CHECK(bee_population IN ('Baja', 'Media', 'Alta')),
                     food_frames INTEGER,

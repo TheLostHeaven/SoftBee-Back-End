@@ -11,15 +11,15 @@ class MonitoreoModel:
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS monitoreos (
                     id SERIAL PRIMARY KEY,
-                    id_colmena INTEGER NOT NULL,
-                    id_apiario INTEGER NOT NULL,
+                    beehive_id INTEGER NOT NULL,
+                    apiary_id INTEGER NOT NULL,
                     fecha TIMESTAMP NOT NULL,
                     datos_json JSONB,
                     sincronizado BOOLEAN DEFAULT FALSE,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    FOREIGN KEY (id_colmena) REFERENCES colmenas(id) ON DELETE CASCADE,
-                    FOREIGN KEY (id_apiario) REFERENCES apiarios(id) ON DELETE CASCADE
+                    FOREIGN KEY (beehive_id) REFERENCES hives(id) ON DELETE CASCADE,
+                    FOREIGN KEY (apiary_id) REFERENCES apiaries(id) ON DELETE CASCADE
                 )
             ''')
             
@@ -44,11 +44,11 @@ class MonitoreoModel:
             ''')
             cursor.execute('''
                 CREATE INDEX IF NOT EXISTS idx_monitoreos_apiario 
-                ON monitoreos (id_apiario)
+                ON monitoreos (apiary_id)
             ''')
             cursor.execute('''
                 CREATE INDEX IF NOT EXISTS idx_monitoreos_colmena 
-                ON monitoreos (id_colmena)
+                ON monitoreos (beehive_id)
             ''')
             cursor.execute('''
                 CREATE INDEX IF NOT EXISTS idx_respuestas_monitoreo_id 
@@ -71,7 +71,7 @@ class MonitoreoModel:
         return [dict(zip(columns, row)) for row in cursor.fetchall()]
 
     @staticmethod
-    def create(db, id_colmena, id_apiario, fecha, respuestas=None, datos_adicionales=None):
+    def create(db, beehive_id, apiary_id, fecha, respuestas=None, datos_adicionales=None):
         """Crea un nuevo monitoreo en PostgreSQL"""
         cursor = db.cursor()
         try:
@@ -80,10 +80,10 @@ class MonitoreoModel:
             
             # Insertar monitoreo principal y obtener ID creado
             cursor.execute('''
-                INSERT INTO monitoreos (id_colmena, id_apiario, fecha, datos_json)
+                INSERT INTO monitoreos (beehive_id, apiary_id, fecha, datos_json)
                 VALUES (%s, %s, %s, %s)
                 RETURNING id
-            ''', (id_colmena, id_apiario, fecha, datos_json))
+            ''', (beehive_id, apiary_id, fecha, datos_json))
             
             monitoreo_id = cursor.fetchone()[0]
             
@@ -122,10 +122,10 @@ class MonitoreoModel:
         try:
             # Obtener monitoreo principal
             cursor.execute('''
-                SELECT m.*, a.nombre as apiario_nombre, c.numero_colmena
+                SELECT m.*, a.name as apiario_nombre, h.hive_number
                 FROM monitoreos m
-                JOIN apiarios a ON m.id_apiario = a.id
-                JOIN colmenas c ON m.id_colmena = c.id
+                JOIN apiaries a ON m.apiary_id = a.id
+                JOIN hives h ON m.beehive_id = h.id
                 WHERE m.id = %s
             ''', (monitoreo_id,))
             
@@ -162,10 +162,10 @@ class MonitoreoModel:
         cursor = db.cursor()
         try:
             cursor.execute('''
-                SELECT m.*, a.nombre as apiario_nombre, c.numero_colmena
+                SELECT m.*, a.name as apiario_nombre, h.hive_number
                 FROM monitoreos m
-                JOIN apiarios a ON m.id_apiario = a.id
-                JOIN colmenas c ON m.id_colmena = c.id
+                JOIN apiaries a ON m.apiary_id = a.id
+                JOIN hives h ON m.beehive_id = h.id
                 ORDER BY m.fecha DESC
                 LIMIT %s OFFSET %s
             ''', (limit, offset))
@@ -175,34 +175,34 @@ class MonitoreoModel:
             cursor.close()
 
     @staticmethod
-    def get_by_apiario(db, apiario_id):
+    def get_by_apiario(db, apiary_id):
         """Obtiene monitoreos por apiario"""
         cursor = db.cursor()
         try:
             cursor.execute('''
-                SELECT m.*, c.numero_colmena
+                SELECT m.*, h.hive_number
                 FROM monitoreos m
-                JOIN colmenas c ON m.id_colmena = c.id
-                WHERE m.id_apiario = %s
+                JOIN hives h ON m.beehive_id = h.id
+                WHERE m.apiary_id = %s
                 ORDER BY m.fecha DESC
-            ''', (apiario_id,))
+            ''', (apiary_id,))
             
             return MonitoreoModel._rows_to_dicts(cursor)
         finally:
             cursor.close()
 
     @staticmethod
-    def get_by_colmena(db, colmena_id):
+    def get_by_colmena(db, beehive_id):
         """Obtiene monitoreos por colmena"""
         cursor = db.cursor()
         try:
             cursor.execute('''
-                SELECT m.*, a.nombre as apiario_nombre
+                SELECT m.*, a.name as apiario_nombre
                 FROM monitoreos m
-                JOIN apiarios a ON m.id_apiario = a.id
-                WHERE m.id_colmena = %s
+                JOIN apiaries a ON m.apiary_id = a.id
+                WHERE m.beehive_id = %s
                 ORDER BY m.fecha DESC
-            ''', (colmena_id,))
+            ''', (beehive_id,))
             
             return MonitoreoModel._rows_to_dicts(cursor)
         finally:
@@ -284,10 +284,10 @@ class MonitoreoModel:
         cursor = db.cursor()
         try:
             cursor.execute('''
-                SELECT m.*, a.nombre as apiario_nombre, c.numero_colmena
+                SELECT m.*, a.name as apiario_nombre, h.hive_number
                 FROM monitoreos m
-                JOIN apiarios a ON m.id_apiario = a.id
-                JOIN colmenas c ON m.id_colmena = c.id
+                JOIN apiaries a ON m.apiary_id = a.id
+                JOIN hives h ON m.beehive_id = h.id
                 WHERE m.sincronizado = FALSE
                 ORDER BY m.fecha ASC
             ''')

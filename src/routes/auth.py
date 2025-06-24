@@ -73,11 +73,10 @@ def create_auth_routes(get_db_func, email_service):
                 
         return user
 
-    # Register
+# Register
     @auth_bp.route('/register', methods=['POST'])
     def auth_register():
         try:
-            # Verificar que tenemos datos JSON
             if not request.is_json:
                 return jsonify({'error': 'Content-Type must be application/json'}), 400
                 
@@ -85,27 +84,23 @@ def create_auth_routes(get_db_func, email_service):
             current_app.logger.debug(f"Raw JSON data: {data}")
             db = get_db_func()
             
-            # Limpia y valida los datos - AÑADIR CAMPOS DE APIARIO
+            # Limpia y valida los datos del usuario
             try:
                 cleaned_data = clean_user_input(data)
-                current_app.logger.debug(f"Cleaned data: {cleaned_data}")
-                
-                # Validar campos adicionales para el apiario
-                if 'apiary_name' not in data or not data['apiary_name'].strip():
-                    raise ValueError("El nombre del apiario es requerido")
+                current_app.logger.debug(f"Cleaned user data: {cleaned_data}")
                     
             except ValueError as ve:
                 current_app.logger.warning(f"Validation error: {str(ve)}")
                 return jsonify({'error': str(ve)}), 400
             
-            # Si llegamos aquí, cleaned_data debe ser válido
-            if not cleaned_data or not isinstance(cleaned_data, dict):
-                current_app.logger.error("clean_user_input returned invalid data")
-                return jsonify({'error': 'Internal server error'}), 500
-                
             # Validación de longitud de contraseña
             if len(cleaned_data['password']) < 8:
                 return jsonify({'error': 'Password must be at least 8 characters'}), 400
+
+            # Validar apiarios
+            apiarios = data.get('apiarios', [])
+            if not apiarios or not isinstance(apiarios, list) or len(apiarios) == 0:
+                return jsonify({'error': 'At least one apiary is required'}), 400
 
             # Crear usuario
             hashed_password = bcrypt.hashpw(cleaned_data['password'].encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
@@ -118,57 +113,64 @@ def create_auth_routes(get_db_func, email_service):
                 password=hashed_password
             )
 
-            # Validar creación exitosa del usuario
             if not user_id:
                 current_app.logger.error('User creation returned invalid ID')
                 return jsonify({'error': 'User creation failed'}), 500
             
-            # CREAR APIARIO ASOCIADO
+            # Crear apiarios asociados
+            created_apiaries = []
             try:
-                    # Obtener y validar campos del apiario
-                    apiary_name = data['apiary_name'].strip()
-                    if not apiary_name:
-                        raise ValueError("El nombre del apiario es requerido")
-                        
-                    apiary_location = data.get('location', 'Ubicación no especificada').strip()
+                for apiario in apiarios:
+                    # Validar campos mínimos
+                    if 'apiary_name' not in apiario or not apiario['apiary_name'].strip():
+                        raise ValueError("Apiary name is required")
                     
-                    # Obtener y convertir beehives_count
+                    # Procesar campos
+                    apiary_name = apiario['apiary_name'].strip()
+                    location = apiario.get('location', 'Ubicación no especificada').strip()
+                    
+                    # Convertir beehives_count
                     try:
-                        beehives_count = int(data.get('beehives_count', 0))
+                        beehives_count = int(apiario.get('beehives_count', 0))
                     except (TypeError, ValueError):
                         beehives_count = 0
-                        
-                    # Obtener y convertir treatments
-                    treatments = data.get('treatments', False)
+                    
+                    # Convertir treatments a booleano
+                    treatments = apiario.get('treatments', False)
                     if isinstance(treatments, str):
-                        treatments = treatments.lower() in ['true', '1', 'yes']
+                        treatments = treatments.lower() in ['true', '1', 'yes', 'verdadero']
+                    else:
+                        treatments = bool(treatments)
                     
                     # Crear apiario
                     apiary_id = ApiaryModel.create(
                         db,
                         user_id=user_id,
                         name=apiary_name,
-                        location=apiary_location,
+                        location=location,
                         beehives_count=beehives_count,
                         treatments=treatments
                     )
                     
-                    # Verificar creación exitosa
                     if not apiary_id or apiary_id <= 0:
-                        current_app.logger.error(f'Apiary creation returned invalid ID: {apiary_id}')
-                        UserModel.delete(db, user_id)
-                        return jsonify({'error': 'Apiary creation failed (invalid ID)'}), 500
-                        
-                    current_app.logger.debug(f"Apiary created: ID {apiary_id} for user {user_id}")
-            
+                        current_app.logger.error(f'Apiary creation failed for: {apiary_name}')
+                        continue
+                    
+                    created_apiaries.append({
+                        'id': apiary_id,
+                        'name': apiary_name,
+                        'location': location
+                    })
+                    
+                    current_app.logger.debug(f"Apiary created: ID {apiary_id} - {apiary_name}")
+                
+                if len(created_apiaries) == 0:
+                    raise RuntimeError("No apiaries were created successfully")
+                    
             except Exception as apiary_error:
                 current_app.logger.error(f"Apiary creation error: {str(apiary_error)}")
                 UserModel.delete(db, user_id)
-                # Mensaje más informativo para desarrollo
-                return jsonify({
-                    'error': 'Failed to create associated apiary',
-                    'details': str(apiary_error)
-                }), 500
+                return jsonify({'error': 'Failed to create apiaries', 'details': str(apiary_error)}), 500
 
             # Obtener usuario creado
             user_data = UserModel.get_by_id(db, user_id)
@@ -191,7 +193,7 @@ def create_auth_routes(get_db_func, email_service):
                 'username': cleaned_data['username'],
                 'email': cleaned_data['email'],
                 'profile_picture_url': user_data['profile_picture_url'],
-                'apiary_id': apiary_id,
+                'apiaries': created_apiaries,
                 'message': 'Registration successful'
             }), 201
 

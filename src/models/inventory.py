@@ -9,8 +9,7 @@ class InventoryModel:
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS inventory (
                     id SERIAL PRIMARY KEY,
-                    apiary_id INTEGER NOT NULL,
-                    item_name VARCHAR(100) NOT NULL,
+                    name VARCHAR(100) NOT NULL,
                     quantity INTEGER NOT NULL DEFAULT 0,
                     unit VARCHAR(50) NOT NULL DEFAULT 'unit',
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

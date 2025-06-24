@@ -36,3 +36,7 @@ class InventoryController:
     def adjust_quantity(self, item_id, amount):
         """Adjusts inventory quantity by amount"""
         self.model.adjust_quantity(self.db, item_id, amount)
+
+    def get_user_inventory(self, user_id):
+        """Gets all inventory items from all apiaries belonging to a user"""
+        return self.model.get_by_user_id(self.db, user_id)

@@ -41,6 +41,18 @@ def create_inventory_routes():
         items = controller.get_apiary_items(apiary_id)
         return jsonify(items), 200
 
+    @inventory_bp.route('/user/inventory', methods=['GET'])
+    def get_user_inventory():
+        db = get_db()
+        controller = InventoryController(db)
+        current_user_id = get_jwt_identity()
+
+        try:
+            items = controller.get_user_inventory(current_user_id)
+            return jsonify(items), 200
+        except Exception as e:
+            return jsonify({'error': str(e)}), 400
+
     @inventory_bp.route('/inventory/<int:item_id>', methods=['PUT'])
     def update_item(item_id):
         db = get_db()

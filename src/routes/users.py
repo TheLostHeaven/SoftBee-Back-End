@@ -2,6 +2,7 @@ from flask import Blueprint, request, jsonify, current_app, g
 from ..controllers.users import UserController
 from src.database.db import get_db
 from src.middleware.jwt import jwt_required
+from src.models.apiary import ApiaryModel
 
 def create_user_routes():
     user_bp = Blueprint('user_routes', __name__)
@@ -61,7 +62,10 @@ def create_user_routes():
         user['profile_picture_url'] = file_handler.get_profile_picture_url(
             user.get('profile_picture', 'default_profile.jpg')
         )
-        
+
+        # Añadir apiarios asociados al usuario
+        user['apiaries'] = ApiaryModel.get_by_user(get_db(), user_id)
+
         return jsonify(user), 200
 
     @user_bp.route('/users/<int:user_id>', methods=['PUT'])
@@ -91,32 +95,49 @@ def create_user_routes():
     @user_bp.route('/users/<int:user_id>/profile-picture', methods=['PUT'])
     @jwt_required
     def update_profile_picture(user_id):
-        # Verificar que el usuario autenticado coincide
         if g.current_user_id != user_id:
             return jsonify({'error': 'Unauthorized'}), 403
 
         if 'file' not in request.files:
             return jsonify({'error': 'No file part'}), 400
-            
+
         file = request.files['file']
         if file.filename == '':
             return jsonify({'error': 'No selected file'}), 400
-        
-        # Usar el manejador de archivos
+
         file_handler = current_app.file_handler
         filename = file_handler.save_profile_picture(file, user_id)
-        
+
         if not filename:
             return jsonify({'error': 'Invalid file type'}), 400
-        
-        # Actualizar en la base de datos
+
         controller = get_controller()
         controller.update_profile_picture(user_id, filename)
-        
+
         return jsonify({
             'profile_picture': file_handler.get_profile_picture_url(filename)
         }), 200
 
+    @user_bp.route('/users/me', methods=['GET'])
+    def get_me():
+        controller = get_controller()
+        user_id = g.current_user_id
+        user = controller.get_user(user_id)
 
+        if not user:
+            return jsonify({'error': 'Usuario no encontrado'}), 404
+
+        user.pop('password', None)
+        user.pop('reset_token', None)
+        user.pop('reset_token_expiry', None)
+
+        file_handler = current_app.file_handler
+        user['profile_picture_url'] = file_handler.get_profile_picture_url(
+            user.get('profile_picture', 'default_profile.jpg')
+        )
+
+        user['apiaries'] = ApiaryModel.get_by_user(get_db(), user_id)
+
+        return jsonify(user), 200
 
     return user_bp

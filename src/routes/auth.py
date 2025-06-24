@@ -130,7 +130,7 @@ def create_auth_routes(get_db_func, email_service):
                     if not apiary_name:
                         raise ValueError("El nombre del apiario es requerido")
                         
-                    apiary_location = data.get('apiary_location', 'Ubicación no especificada').strip()
+                    apiary_location = data.get('location', 'Ubicación no especificada').strip()
                     
                     # Obtener y convertir beehives_count
                     try:

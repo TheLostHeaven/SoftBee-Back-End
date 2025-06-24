@@ -18,7 +18,7 @@ class MonitoreoModel:
                     sincronizado BOOLEAN DEFAULT FALSE,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    FOREIGN KEY (beehive_id) REFERENCES hives(id) ON DELETE CASCADE,
+                    FOREIGN KEY (beehive_id) REFERENCES beehives(id) ON DELETE CASCADE,
                     FOREIGN KEY (apiary_id) REFERENCES apiaries(id) ON DELETE CASCADE
                 )
             ''')
@@ -125,7 +125,7 @@ class MonitoreoModel:
                 SELECT m.*, a.name as apiario_nombre, h.hive_number
                 FROM monitoreos m
                 JOIN apiaries a ON m.apiary_id = a.id
-                JOIN hives h ON m.beehive_id = h.id
+                JOIN beehives h ON m.beehive_id = h.id
                 WHERE m.id = %s
             ''', (monitoreo_id,))
             
@@ -165,7 +165,7 @@ class MonitoreoModel:
                 SELECT m.*, a.name as apiario_nombre, h.hive_number
                 FROM monitoreos m
                 JOIN apiaries a ON m.apiary_id = a.id
-                JOIN hives h ON m.beehive_id = h.id
+                JOIN beehives h ON m.beehive_id = h.id
                 ORDER BY m.fecha DESC
                 LIMIT %s OFFSET %s
             ''', (limit, offset))
@@ -182,7 +182,7 @@ class MonitoreoModel:
             cursor.execute('''
                 SELECT m.*, h.hive_number
                 FROM monitoreos m
-                JOIN hives h ON m.beehive_id = h.id
+                JOIN beehives h ON m.beehive_id = h.id
                 WHERE m.apiary_id = %s
                 ORDER BY m.fecha DESC
             ''', (apiary_id,))
@@ -287,7 +287,7 @@ class MonitoreoModel:
                 SELECT m.*, a.name as apiario_nombre, h.hive_number
                 FROM monitoreos m
                 JOIN apiaries a ON m.apiary_id = a.id
-                JOIN hives h ON m.beehive_id = h.id
+                JOIN beehives h ON m.beehive_id = h.id
                 WHERE m.sincronizado = FALSE
                 ORDER BY m.fecha ASC
             ''')

@@ -6,7 +6,7 @@ def create_inventory_routes():
     inventory_bp = Blueprint('inventory_routes', __name__)
 
     @inventory_bp.route('/apiaries/<int:apiary_id>/inventory', methods=['POST'])
-    def create_item():
+    def create_item(apiary_id):
         db = get_db()
         controller = InventoryController(db)
         data = request.get_json()
@@ -16,10 +16,10 @@ def create_inventory_routes():
 
         try:
             item_id = controller.create_item(
-                data['apiary_id'],
                 data['item_name'],
                 data.get('quantity', 0),
-                data.get('unit', 'unit')
+                data.get('unit', 'unit'),
+                apiary_id=apiary_id
             )
             return jsonify({'id': item_id}), 201
         except Exception as e:

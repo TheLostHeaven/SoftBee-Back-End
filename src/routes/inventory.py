@@ -16,7 +16,6 @@ def create_inventory_routes():
 
         try:
             item_id = controller.create_item(
-                data['apiary_id'],
                 data['item_name'],
                 data.get('quantity', 0),
                 data.get('unit', 'unit')

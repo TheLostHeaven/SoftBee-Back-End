@@ -12,14 +12,14 @@ def create_inventory_routes():
         data = request.get_json()
 
         if not data or 'name' not in data:
-            return jsonify({'error': 'name are required'}), 400
+            return jsonify({'error': 'name is required'}), 400
 
         try:
             item_id = controller.create_item(
-                data['name'],
-                data.get('quantity', 0),
-                data.get('unit', 'unit'),
-                apiary_id=apiary_id 
+                name=data['name'],
+                quantity=data.get('quantity', 0),
+                unit=data.get('unit', 'unit'),
+                apiary_id=apiary_id  # Usa el ID de la URL, no del JSON
             )
             return jsonify({'id': item_id}), 201
         except Exception as e:

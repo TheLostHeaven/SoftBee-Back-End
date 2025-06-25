@@ -11,12 +11,12 @@ def create_inventory_routes():
         controller = InventoryController(db)
         data = request.get_json()
 
-        if not data or 'apiary_id' not in data or 'item_name' not in data:
-            return jsonify({'error': 'apiary_id and item_name are required'}), 400
+        if not data or 'apiary_id' not in data or 'name' not in data:
+            return jsonify({'error': 'apiary_id and name are required'}), 400
 
         try:
             item_id = controller.create_item(
-                data['item_name'],
+                data['name'],
                 data.get('quantity', 0),
                 data.get('unit', 'unit'),
                 apiary_id=apiary_id
@@ -82,11 +82,11 @@ def create_inventory_routes():
         db = get_db()
         controller = InventoryController(db)
         data = request.get_json()
-        if not data or 'item_name' not in data:
-            return jsonify({'error': 'item_name is required'}), 400
+        if not data or 'name' not in data:
+            return jsonify({'error': 'name is required'}), 400
 
         try:
-            controller.delete_by_name(apiary_id, data['item_name'])
+            controller.delete_by_name(apiary_id, data['name'])
             return jsonify({'message': 'Item(s) deleted'}), 200
         except Exception as e:
             return jsonify({'error': str(e)}), 400

@@ -5,9 +5,9 @@ class InventoryController:
         self.db = db
         self.model = InventoryModel
 
-    def create_item(self, apiary_id, item_name, quantity=0, unit='unit'):
+    def create_item(self, apiary_id, name, quantity=0, unit='unit'):
         """Creates a new inventory item for an apiary"""
-        return self.model.create(self.db, apiary_id, item_name, quantity, unit)
+        return self.model.create(self.db, apiary_id, name, quantity, unit)
 
     def get_item(self, item_id):
         """Gets inventory item by ID"""
@@ -25,13 +25,13 @@ class InventoryController:
         """Deletes an inventory item"""
         self.model.delete(self.db, item_id)
 
-    def delete_by_name(self, apiary_id, item_name):
+    def delete_by_name(self, apiary_id, name):
         """Deletes inventory item(s) by name for an apiary"""
-        self.model.delete_by_name(self.db, apiary_id, item_name)
+        self.model.delete_by_name(self.db, apiary_id, name)
 
-    def search_items(self, apiary_id, item_name):
+    def search_items(self, apiary_id, name):
         """Searches inventory items by name for an apiary"""
-        return self.model.get_by_name(self.db, apiary_id, item_name)
+        return self.model.get_by_name(self.db, apiary_id, name)
 
     def adjust_quantity(self, item_id, amount):
         """Adjusts inventory quantity by amount"""

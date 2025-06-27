@@ -69,18 +69,20 @@ class UserModel:
             cursor.close()
 
     @staticmethod
-    def create(db, nombre, username, email, phone, password):
+    def create(db, nombre, username, email, phone, password, profile_picture=None):
         """Crea un nuevo usuario en PostgreSQL. Recibe el hash ya generado."""
-        current_app.logger.debug(f"Hashed password: {password}") 
+        current_app.logger.debug(f"Hashed password: {password}")
+        if profile_picture is None:
+            profile_picture = 'profile_picture.png'
         cursor = db.cursor()
         try:
             cursor.execute(
                 '''
-                INSERT INTO users (nombre, username, email, phone, password)
-                VALUES (%s, %s, %s, %s, %s)
+                INSERT INTO users (nombre, username, email, phone, password, profile_picture)
+                VALUES (%s, %s, %s, %s, %s, %s)
                 RETURNING id
                 ''',
-                (nombre, username.lower(), email.lower(), phone, password)
+                (nombre, username.lower(), email.lower(), phone, password, profile_picture)
             )
             user_id = cursor.fetchone()[0]
             db.commit()

@@ -110,7 +110,8 @@ def create_auth_routes(get_db_func, email_service):
                 username=cleaned_data['username'],
                 email=cleaned_data['email'],
                 phone=cleaned_data['phone'],
-                password=hashed_password
+                password=hashed_password,
+                profile_picture=data.get('profile_picture')
             )
 
             if not user_id:

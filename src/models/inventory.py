@@ -14,8 +14,7 @@ class InventoryModel:
                     quantity INTEGER NOT NULL DEFAULT 0,
                     unit VARCHAR(50) NOT NULL DEFAULT 'unit',
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    FOREIGN KEY (apiary_id) REFERENCES apiaries(id) ON DELETE CASCADE
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
             ''')
             db.commit()

@@ -86,5 +86,28 @@ def create_apiary_routes():
             return jsonify({'message': 'Apiary deleted successfully'}), 200
         except Exception as e:
             return jsonify({'error': str(e)}), 500
+        
+    @apiary_bp.route('/health', methods=['GET'])
+    def health_check():
+        db = get_db()
+        try:
+            # Crear un cursor y verificar conexión a la base de datos
+            cursor = db.cursor()
+            cursor.execute("SELECT 1")
+            cursor.close()
+            
+            return jsonify({
+                'status': 'healthy',
+                'service': 'apiaries',
+                'message': 'Service is running normally',
+                'database': 'PostgreSQL connection successful'
+            }), 200
+        except Exception as e:
+            return jsonify({
+                'status': 'unhealthy',
+                'error': str(e),
+                'message': 'Database connection failed',
+                'database': 'PostgreSQL connection failed'
+            }),500
 
     return apiary_bp

@@ -9,6 +9,7 @@ class InventoryModel:
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS inventory (
                     id SERIAL PRIMARY KEY,
+                    apiary_id INTEGER NOT NULL,
                     name VARCHAR(100) NOT NULL,
                     quantity INTEGER NOT NULL DEFAULT 0,
                     unit VARCHAR(50) NOT NULL DEFAULT 'unit',
@@ -63,27 +64,27 @@ class InventoryModel:
         )
 
     @staticmethod
-    def create(db, apiary_id, item_name, quantity=0, unit='unit'):
+    def create(db, apiary_id, name, quantity=0, unit='unit'):
         query = '''
-            INSERT INTO inventory (apiary_id, item_name, quantity, unit)
+            INSERT INTO inventory (apiary_id, name, quantity, unit)
             VALUES (%s, %s, %s, %s)
             RETURNING id
         '''
         cursor = db.cursor()
-        cursor.execute(query, (apiary_id, item_name, quantity, unit))
+        cursor.execute(query, (apiary_id, name, quantity, unit))
         db.commit()
         item_id = cursor.fetchone()[0]
         cursor.close()
         return item_id
 
     @staticmethod
-    def update(db, item_id, item_name=None, quantity=None, unit=None):
+    def update(db, item_id, name=None, quantity=None, unit=None):
         fields = []
         params = []
         
-        if item_name is not None:
-            fields.append("item_name = %s")
-            params.append(item_name)
+        if name is not None:
+            fields.append("name = %s")
+            params.append(name)
         if quantity is not None:
             fields.append("quantity = %s")
             params.append(quantity)
@@ -107,19 +108,19 @@ class InventoryModel:
         )
 
     @staticmethod
-    def delete_by_name(db, apiary_id, item_name):
+    def delete_by_name(db, apiary_id, name):
         InventoryModel._execute_update(
             db,
-            'DELETE FROM inventory WHERE apiary_id = %s AND item_name = %s',
-            (apiary_id, item_name)
+            'DELETE FROM inventory WHERE apiary_id = %s AND name = %s',
+            (apiary_id, name)
         )
 
     @staticmethod
-    def get_by_name(db, apiary_id, item_name):
+    def get_by_name(db, apiary_id, name):
         return InventoryModel._execute_query(
             db,
-            'SELECT * FROM inventory WHERE apiary_id = %s AND item_name LIKE %s',
-            (apiary_id, f"%{item_name}%")
+            'SELECT * FROM inventory WHERE apiary_id = %s AND name LIKE %s',
+            (apiary_id, f"%{name}%")
         )
 
     @staticmethod
@@ -137,6 +138,6 @@ class InventoryModel:
             db,
             '''SELECT i.* FROM inventory i
             JOIN apiaries a ON i.apiary_id = a.id
-            WHERE a.user_id = ?''',
+            WHERE a.user_id = %s''',
             (user_id,)
         )

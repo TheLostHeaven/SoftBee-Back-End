@@ -6,16 +6,20 @@ def create_inventory_routes():
     inventory_bp = Blueprint('inventory_routes', __name__)
 
     @inventory_bp.route('/apiaries/<int:apiary_id>/inventory', methods=['POST'])
-    def create_item():
+    def create_item(apiary_id):
         db = get_db()
         controller = InventoryController(db)
         data = request.get_json()
 
-        if not data or 'apiary_id' not in data or 'item_name' not in data:
-            return jsonify({'error': 'apiary_id and item_name are required'}), 400
+        if not data or 'name' not in data:
+            return jsonify({'error': 'name is required'}), 400
 
         try:
             item_id = controller.create_item(
+                name=data['name'],
+                quantity=data.get('quantity', 0),
+                unit=data.get('unit', 'unit'),
+                apiary_id=apiary_id 
                 data['item_name'],
                 data.get('quantity', 0),
                 data.get('unit', 'unit')
@@ -39,18 +43,12 @@ def create_inventory_routes():
         controller = InventoryController(db)
         items = controller.get_apiary_items(apiary_id)
         return jsonify(items), 200
+    @inventory_bp.route('/user/inventory', methods=['GET'])
+    def get_user_inventory():
+        db = get_db()
+        controller = InventoryController(db)
+        current_user_id =' user_id '
 
-    # @inventory_bp.route('/user/inventory', methods=['GET'])
-    # def get_user_inventory():
-    #     db = get_db()
-    #     controller = InventoryController(db)
-    #     current_user_id = get_jwt_identity()
-
-    #     try:
-    #         items = controller.get_user_inventory(current_user_id)
-    #         return jsonify(items), 200
-    #     except Exception as e:
-    #         return jsonify({'error': str(e)}), 400
 
     @inventory_bp.route('/inventory/<int:item_id>', methods=['PUT'])
     def update_item(item_id):
@@ -81,11 +79,11 @@ def create_inventory_routes():
         db = get_db()
         controller = InventoryController(db)
         data = request.get_json()
-        if not data or 'item_name' not in data:
-            return jsonify({'error': 'item_name is required'}), 400
+        if not data or 'name' not in data:
+            return jsonify({'error': 'name is required'}), 400
 
         try:
-            controller.delete_by_name(apiary_id, data['item_name'])
+            controller.delete_by_name(apiary_id, data['name'])
             return jsonify({'message': 'Item(s) deleted'}), 200
         except Exception as e:
             return jsonify({'error': str(e)}), 400

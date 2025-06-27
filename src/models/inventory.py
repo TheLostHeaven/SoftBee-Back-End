@@ -139,6 +139,6 @@ class InventoryModel:
             db,
             '''SELECT i.* FROM inventory i
             JOIN apiaries a ON i.apiary_id = a.id
-            WHERE a.user_id = ?''',
+            WHERE a.user_id = %s''',
             (user_id,)
         )

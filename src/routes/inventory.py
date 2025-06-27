@@ -20,9 +20,6 @@ def create_inventory_routes():
                 quantity=data.get('quantity', 0),
                 unit=data.get('unit', 'unit'),
                 apiary_id=apiary_id 
-                data['item_name'],
-                data.get('quantity', 0),
-                data.get('unit', 'unit')
             )
             return jsonify({'id': item_id}), 201
         except Exception as e:

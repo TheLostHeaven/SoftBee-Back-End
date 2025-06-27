@@ -119,6 +119,7 @@ def create_user_routes():
         }), 200
 
     @user_bp.route('/users/me', methods=['GET'])
+    @jwt_required
     def get_me():
         controller = get_controller()
         user_id = g.current_user_id

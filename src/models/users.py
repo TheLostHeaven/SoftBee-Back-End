@@ -16,6 +16,7 @@ class UserModel:
                     email VARCHAR(100) UNIQUE NOT NULL,
                     phone VARCHAR(20),
                     password VARCHAR(200) NOT NULL,
+                    profile_picture VARCHAR(255),
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                 )
@@ -139,7 +140,7 @@ class UserModel:
             raise ValueError("No fields provided to update")
         
         # Campos permitidos para actualizar
-        valid_keys = ['nombre', 'username', 'email', 'phone', 'password']
+        valid_keys = ['nombre', 'username', 'email', 'phone', 'password', 'profile_picture']
         
         # Preparar campos y valores
         set_clause = []

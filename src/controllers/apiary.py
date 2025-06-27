@@ -17,7 +17,7 @@ class ApiaryController:
     def get_apiary(self, apiary_id):
         apiary = self.model.get_by_id(self.db, apiary_id)
         if apiary:
-            apiary['inventory_items'] = InventoryModel.get_all(self.db, apiary_id)
+            apiary['inventory'] = InventoryModel.get_all(self.db, apiary_id)
         return apiary
 
     def get_all_apiaries_for_user(self, user_id):
@@ -27,7 +27,7 @@ class ApiaryController:
             return None
         apiaries = self.model.get_by_user(self.db, user_id)
         for apiary in apiaries:
-            apiary['inventory_items'] = InventoryModel.get_all(self.db, apiary['id'])
+            apiary['inventory'] = InventoryModel.get_all(self.db, apiary['id'])
         return apiaries
 
     def update_apiary(self, apiary_id, **kwargs):

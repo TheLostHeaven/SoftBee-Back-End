@@ -32,7 +32,7 @@ class BeehiveModel:
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     FOREIGN KEY (apiary_id) REFERENCES apiaries(id) ON DELETE CASCADE,
-                    UNIQUE(apiary_id, hive_number)
+                    UNIQUE(apiary_id, beehive_number)
                 )
             ''')
             db.commit()

@@ -1,9 +1,10 @@
 from flask import request, current_app, g
 import jwt
 from datetime import datetime, timedelta
+from functools import wraps
 
 def jwt_required(f):
-    """Decorator para proteger rutas con JWT"""
+    @wraps(f)
     def decorated_function(*args, **kwargs):
         token = None
         

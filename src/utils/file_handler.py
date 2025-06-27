@@ -38,5 +38,5 @@ class FileHandler:
     
     def get_profile_picture_url(self, filename):
         if not filename:
-            filename = 'default_profile.jpg'
+            filename = 'profile_picture.png'
         return f"/static/profile_pictures/{filename}"

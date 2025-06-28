@@ -17,7 +17,7 @@ class Config:
 
     FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
 
-    JWT_SECRET_KEY = os.getenv("SECRET_KEY", "secret-key-default")
+    JWT_SECRET_KEY = os.getenv("JWT_KEY", "secret-key-default")
     JWT_ALGORITHM = os.getenv("ALGORITHM", "HS256")
     JWT_ACCESS_TOKEN_EXPIRES = int(os.getenv("EXPIRES_TOKEN_SESSION", 1440))  # 24 horas
     JWT_RESET_TOKEN_EXPIRES = int(os.getenv("EXPIRES_TOKEN_EMAIL", 30))  # 30 minutos

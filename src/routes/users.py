@@ -26,7 +26,8 @@ def create_user_routes():
                 data['username'],
                 data['email'],
                 data['phone'],
-                data['password']
+                data['password'],
+                data.get('profile_picture')
             )
             return jsonify({'id': user_id}), 201
         except Exception as e:

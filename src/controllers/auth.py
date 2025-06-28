@@ -10,7 +10,7 @@ class AuthController:
         self.db = db
         self.mail_service = mail_service
         
-    def register_user(self, nombre, username, email, phone, password):
+    def register_user(self, nombre, username, email, phone, password, profile_picture=None):
         """Registra un nuevo usuario"""
         # Verifica si el usuario ya existe
         if UserModel.get_by_email(self.db, email):
@@ -26,7 +26,8 @@ class AuthController:
             username=username,
             email=email,
             phone=phone,
-            password=hashed_password
+            password=hashed_password,
+            profile_picture=profile_picture
         )
     
     def authenticate_user(self, identifier, password):

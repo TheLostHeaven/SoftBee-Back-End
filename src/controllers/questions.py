@@ -89,11 +89,11 @@ class QuestionController:
                         is_required=False, display_order=0, min_value=None, 
                         max_value=None, options=None, depends_on=None, is_active=True):
         """Creates a new question for an apiary"""
-        if question_type == 'option' and (not options or len(options) < 2):
-            raise ValueError("Option questions require at least 2 options")
+        if question_type == 'opciones' and (not options or len(options) < 2):
+            raise ValueError("Las preguntas de opción múltiple requieren al menos 2 opciones")
 
-        if question_type == 'number' and (min_value is None or max_value is None):
-            raise ValueError("Number questions require min and max values")
+        if question_type == 'numero' and (min_value is None or max_value is None):
+            raise ValueError("Las preguntas numéricas requieren valores mínimos y máximos")
 
         return self.model.create(
             self.db, apiary_id, question_id, question_text, question_type,

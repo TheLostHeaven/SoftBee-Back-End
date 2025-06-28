@@ -1,4 +1,4 @@
-from flask import Flask
+from flask import Flask, json
 from flask_cors import CORS
 from flask_mail import Mail
 from src.utils.email_service import EmailService
@@ -6,9 +6,17 @@ from src.utils.file_handler import FileHandler
 import os
 from src.database.db import get_db
 from config import Config
+from datetime import datetime
+
+class CustomJSONEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, datetime):
+            return obj.isoformat()
+        return super().default(self, obj)
 
 def create_app(testing=False):
     app = Flask(__name__, instance_relative_config=True)
+    app.json_encoder = CustomJSONEncoder
     app.config.from_object(Config)
     CORS(app)
     file_handler = FileHandler(app)

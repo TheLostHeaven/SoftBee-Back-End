@@ -51,7 +51,7 @@ def create_apiary_routes():
     @jwt_required
     def get_user_apiaries(user_id):
         # Acceso solo permitido al usuario autenticado
-        if g.current_user_id != user_id:
+        if int(g.current_user_id) != user_id:
             return jsonify({'error': 'Acceso no autorizado'}), 403
             
         db = get_db()

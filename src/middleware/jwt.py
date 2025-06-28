@@ -98,7 +98,7 @@ def generate_token(user_id, user_data=None):
     """Genera un token JWT"""
     try:
         payload = {
-            'sub': user_id,
+            'sub': str(user_id),
             'iat': datetime.utcnow(),
             'exp': datetime.utcnow() + timedelta(
                 minutes=current_app.config['JWT_ACCESS_TOKEN_EXPIRES']

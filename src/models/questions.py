@@ -12,7 +12,7 @@ class QuestionModel:
                     id SERIAL PRIMARY KEY,
                     apiary_id INTEGER NOT NULL,
                     question_text TEXT NOT NULL,
-                    question_type TEXT NOT NULL CHECK(question_type IN ('text', 'number', 'option')),
+                    question_type TEXT NOT NULL CHECK(question_type IN ('texto', 'numero', 'opciones', 'rango')),
                     is_required BOOLEAN NOT NULL DEFAULT FALSE,
                     display_order INTEGER NOT NULL,
                     min_value INTEGER,
@@ -79,6 +79,101 @@ class QuestionModel:
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 RETURNING id
                 ''',
+                (apiary_id, question_id, question_text, question_type, is_required, display_order,
+                 min_value, max_value, json.dumps(options) if options else None, depends_on, is_active)
+            )
+            db.commit()
+            return cursor.fetchone()[0]
+        except Exception as e:
+            db.rollback()
+            raise e
+        finally:
+            cursor.close()
+
+    @staticmethod
+    def get_by_id(db, question_id):
+        """Obtiene pregunta por ID"""
+        results = QuestionModel._execute_query(
+            db,
+            'SELECT * FROM questions WHERE id = %s',
+            (question_id,)
+        )
+        return results[0] if results else None
+
+    @staticmethod
+    def get_by_apiary(db, apiary_id, active_only=True):
+        """Obtiene preguntas por apiario"""
+        query = '''
+            SELECT * 
+            FROM questions 
+            WHERE apiary_id = %s 
+                {}
+            ORDER BY display_order
+        '''.format("AND is_active = TRUE" if active_only else "")
+        
+        params = (apiary_id,)
+        return QuestionModel._execute_query(db, query, params)
+
+    @staticmethod
+    def update(db, question_id, **kwargs):
+        """Actualiza pregunta en PostgreSQL"""
+        if not kwargs:
+            raise ValueError("No fields to update")
+        
+        # Manejo especial para campo options
+        if 'options' in kwargs:
+            kwargs['options'] = json.dumps(kwargs['options']) if kwargs['options'] else None
+        
+        set_clause = ", ".join([
+            f"{field} = %s" 
+            for field in kwargs.keys()
+            if field != 'updated_at'  # Excluir updated_at ya que se maneja automáticamente
+        ])
+        
+        params = list(kwargs.values())
+        params.append(question_id)
+        
+        query = f"""
+            UPDATE questions 
+            SET {set_clause}, updated_at = CURRENT_TIMESTAMP 
+            WHERE id = %s
+        """
+        
+        QuestionModel._execute_update(db, query, params)
+
+    @staticmethod
+    def delete(db, question_id):
+        """Elimina pregunta"""
+        QuestionModel._execute_update(
+            db, 
+            'DELETE FROM questions WHERE id = %s', 
+            (question_id,)
+        )
+
+    @staticmethod
+    def reorder(db, apiary_id, new_order):
+        """Actualiza orden de visualización usando una única consulta eficiente"""
+        # Crear una lista de tuplas (order, question_id)
+        order_data = [(order, qid) for order, qid in enumerate(new_order, 1)]
+        
+        # Usar una consulta UPDATE con CASE para mayor eficiencia
+        query = """
+            UPDATE questions
+            SET display_order = CASE id
+                {}
+            END
+            WHERE apiary_id = %s AND id IN %s
+        """.format(
+            "
+".join([f"WHEN %s THEN %s" for _ in order_data])
+        )
+        
+        # Preparar parámetros: primero los pares (id, order) para el CASE
+        params = [item for pair in order_data for item in (pair[1], pair[0])]
+        params.extend([apiary_id, tuple(new_order)])
+        
+        QuestionModel._execute_update(db, query, params)
+
                 (apiary_id, question_id, question_text, question_type, is_required, display_order,
                  min_value, max_value, json.dumps(options) if options else None, depends_on, is_active)
             )

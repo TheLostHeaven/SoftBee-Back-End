@@ -1,30 +1,33 @@
-from flask import Flask, json
+from flask import Flask
 from flask_cors import CORS
 from flask_mail import Mail
 from src.utils.email_service import EmailService
 from src.utils.file_handler import FileHandler
-import os
 from src.database.db import get_db
 from config import Config
 from datetime import datetime
+from flask.json.provider import DefaultJSONProvider  # ✅ Importación moderna
 
-class CustomJSONEncoder(json.JSONEncoder):
+# ✅ Clase personalizada de JSONProvider
+class CustomJSONProvider(DefaultJSONProvider):
     def default(self, obj):
         if isinstance(obj, datetime):
             return obj.isoformat()
-        return super().default(self, obj)
+        return super().default(obj)
 
 def create_app(testing=False):
     app = Flask(__name__, instance_relative_config=True)
-    app.json_encoder = CustomJSONEncoder
+
+    # ✅ Nueva forma de manejar la codificación JSON
+    app.json_provider_class = CustomJSONProvider
     app.config.from_object(Config)
+
     CORS(app)
+
     file_handler = FileHandler(app)
     file_handler.init_app(app)
     app.file_handler = file_handler
 
-    
-    
     from src.database.db import init_app
     init_app(app)
 
@@ -38,20 +41,14 @@ def create_app(testing=False):
     mail = Mail(app)
     email_service = EmailService(mail)
 
-
     with app.app_context():
         auth_bp = create_auth_routes(get_db_func=get_db, email_service=email_service)
         app.register_blueprint(auth_bp, url_prefix='/api')
-
-
-    # Registrar blueprints
-
 
     app.register_blueprint(create_apiary_routes(), url_prefix='/api')
     app.register_blueprint(create_hive_routes(), url_prefix='/api')
     app.register_blueprint(create_inventory_routes(), url_prefix='/api')
     app.register_blueprint(create_question_routes(), url_prefix='/api')
     app.register_blueprint(create_user_routes(), url_prefix='/api')
-
 
     return app

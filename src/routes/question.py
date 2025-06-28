@@ -11,13 +11,14 @@ def create_question_routes():
         controller = QuestionController(db)
 
         data = request.get_json()
-        required = ['apiary_id', 'question_text', 'question_type']
+        required = ['apiary_id', 'id', 'question_text', 'question_type']
         if not all(field in data for field in required):
-            return jsonify({'error': 'Missing required fields'}), 400
+            return jsonify({'error': 'Faltan campos requeridos: apiary_id, id, question_text, question_type'}), 400
 
         try:
             question_id = controller.create_question(
                 data['apiary_id'],
+                data['id'],
                 data['question_text'],
                 data['question_type'],
                 data.get('is_required', False),

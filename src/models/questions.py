@@ -9,7 +9,7 @@ class QuestionModel:
         try:
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS questions (
-                    id SERIAL PRIMARY KEY,
+                    id TEXT PRIMARY KEY,
                     apiary_id INTEGER NOT NULL,
                     question_text TEXT NOT NULL,
                     question_type TEXT NOT NULL CHECK(question_type IN ('texto', 'numero', 'opciones', 'rango')),
@@ -74,12 +74,12 @@ class QuestionModel:
             cursor.execute(
                 '''
                 INSERT INTO questions 
-                (apiary_id, id, question_text, question_type, is_required, display_order, 
+                (id, apiary_id, question_text, question_type, is_required, display_order, 
                 min_value, max_value, options, depends_on, is_active)
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 RETURNING id
                 ''',
-                (apiary_id, question_id, question_text, question_type, is_required, display_order,
+                (question_id, apiary_id, question_text, question_type, is_required, display_order,
                 min_value, max_value, json.dumps(options) if options else None, depends_on, is_active)
             )
             db.commit()
@@ -124,11 +124,17 @@ class QuestionModel:
         if 'options' in kwargs:
             kwargs['options'] = json.dumps(kwargs['options']) if kwargs['options'] else None
 
+        # Evitar la actualización de la clave primaria
+        kwargs.pop('id', None)
+
         set_clause = ", ".join([
             f"{field} = %s"
             for field in kwargs.keys()
             if field != 'updated_at'  # Excluir updated_at ya que se maneja automáticamente
         ])
+
+        if not set_clause:
+            raise ValueError("No valid fields to update")
 
         params = list(kwargs.values())
         params.append(question_id)

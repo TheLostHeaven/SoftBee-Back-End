@@ -18,13 +18,12 @@ class CustomJSONProvider(DefaultJSONProvider):
 def create_app(testing=False):
     app = Flask(__name__, instance_relative_config=True)
 
-    # ✅ Nueva forma de manejar la codificación JSON
     app.json_provider_class = CustomJSONProvider
     app.config.from_object(Config)
 
     CORS(app)
 
-    file_handler = FileHandler(app)
+    file_handler = FileHandler()
     file_handler.init_app(app)
     app.file_handler = file_handler
 

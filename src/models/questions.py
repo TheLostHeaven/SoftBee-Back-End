@@ -66,7 +66,7 @@ class QuestionModel:
             cursor.close()
 
     @staticmethod
-    def create(db, apiary_id, question_id, question_text, question_type, is_required=False,
+    def create(db, apiary_id, question_text, question_type, is_required=False,
                 display_order=0, min_value=None, max_value=None, options=None, depends_on=None, is_active=True):
         """Crea una nueva pregunta en PostgreSQL"""
         cursor = db.cursor()
@@ -74,12 +74,12 @@ class QuestionModel:
             cursor.execute(
                 '''
                 INSERT INTO questions 
-                (id, apiary_id, question_text, question_type, is_required, display_order, 
+                (apiary_id, question_text, question_type, is_required, display_order, 
                 min_value, max_value, options, depends_on, is_active)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 RETURNING id
                 ''',
-                (question_id, apiary_id, question_text, question_type, is_required, display_order,
+                (apiary_id, question_text, question_type, is_required, display_order,
                 min_value, max_value, json.dumps(options) if options else None, depends_on, is_active)
             )
             db.commit()

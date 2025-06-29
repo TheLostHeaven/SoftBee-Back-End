@@ -96,7 +96,7 @@ class QuestionController:
             raise ValueError("Las preguntas numéricas requieren valores mínimos y máximos")
 
         return self.model.create(
-            self.db, apiary_id, question_id, question_text, question_type,
+            self.db, apiary_id, question_text, question_type,
             is_required, display_order, min_value, max_value, options,
             depends_on, is_active)
 

@@ -6,13 +6,12 @@ from src.utils.file_handler import FileHandler
 from src.database.db import get_db
 from config import Config
 from datetime import datetime
-from flask.json.provider import DefaultJSONProvider  # ✅ Importación moderna
+from flask.json.provider import DefaultJSONProvider 
 
-# ✅ Clase personalizada de JSONProvider
 class CustomJSONProvider(DefaultJSONProvider):
     def default(self, obj):
         if isinstance(obj, datetime):
-            return obj.isoformat()
+            return obj.strftime('%Y-%m-%dT%H:%M:%S')
         return super().default(obj)
 
 def create_app(testing=False):

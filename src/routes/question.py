@@ -17,6 +17,7 @@ def create_question_routes():
 
         try:
             question_id = controller.create_question(
+                id=data['id'],
                 apiary_id=data['apiary_id'],
                 question_text=data['question_text'],
                 question_type=data['question_type'],

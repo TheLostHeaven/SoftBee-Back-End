@@ -85,7 +85,7 @@ class QuestionController:
     def __init__(self, db):
         self.db = db
         self.model = QuestionModel
-    def create_question(self, id, apiary_id, question_text, question_type, 
+    def create_question(self, apiary_id, question_text, question_type, 
                         is_required=False, display_order=0, min_value=None, 
                         max_value=None, options=None, depends_on=None, is_active=True):
         """Creates a new question for an apiary"""
@@ -96,7 +96,7 @@ class QuestionController:
             raise ValueError("Las preguntas numéricas requieren valores mínimos y máximos")
 
         return self.model.create(
-            self.db, id, apiary_id, question_text, question_type,
+            self.db, apiary_id, question_text, question_type,
             is_required, display_order, min_value, max_value, options,
             depends_on, is_active)
 

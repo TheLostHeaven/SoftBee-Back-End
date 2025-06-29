@@ -6,25 +6,23 @@ from src.utils.file_handler import FileHandler
 from src.database.db import get_db
 from config import Config
 from datetime import datetime
-from flask.json.provider import DefaultJSONProvider  # ✅ Importación moderna
+from flask.json.provider import DefaultJSONProvider 
 
-# ✅ Clase personalizada de JSONProvider
 class CustomJSONProvider(DefaultJSONProvider):
     def default(self, obj):
         if isinstance(obj, datetime):
-            return obj.isoformat()
+            return obj.strftime('%Y-%m-%dT%H:%M:%S')
         return super().default(obj)
 
 def create_app(testing=False):
     app = Flask(__name__, instance_relative_config=True)
 
-    # ✅ Nueva forma de manejar la codificación JSON
     app.json_provider_class = CustomJSONProvider
     app.config.from_object(Config)
 
     CORS(app)
 
-    file_handler = FileHandler(app)
+    file_handler = FileHandler()
     file_handler.init_app(app)
     app.file_handler = file_handler
 

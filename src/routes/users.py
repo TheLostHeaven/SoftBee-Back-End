@@ -1,8 +1,9 @@
-from flask import Blueprint, request, jsonify, current_app, g
+from flask import Blueprint, request, jsonify, current_app, g, app, send_from_directory
 from ..controllers.users import UserController
 from src.database.db import get_db
 from src.middleware.jwt import jwt_required
 from src.models.apiary import ApiaryModel
+import os
 
 def create_user_routes():
     user_bp = Blueprint('user_routes', __name__)
@@ -153,5 +154,12 @@ def create_user_routes():
         user['apiaries'] = ApiaryModel.get_by_user(get_db(), user_id)
 
         return jsonify(user), 200
+    
+    @user_bp.route('/static/profile_pictures/<filename>')
+    @jwt_required
+    def serve_profile_picture(filename):
+        return send_from_directory(
+        os.path.join(app.root_path, 'static', 'profile_pictures'),
+        filename)
 
     return user_bp

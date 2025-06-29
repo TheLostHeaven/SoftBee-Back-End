@@ -9,10 +9,10 @@ class QuestionModel:
         try:
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS questions (
-                    id SERIAL PRIMARY KEY,
+                    id TEXT PRIMARY KEY,
                     apiary_id INTEGER NOT NULL,
                     question_text TEXT NOT NULL,
-                    question_type TEXT NOT NULL CHECK(question_type IN ('text', 'number', 'option')),
+                    question_type TEXT NOT NULL CHECK(question_type IN ('texto', 'numero', 'opciones', 'rango')),
                     is_required BOOLEAN NOT NULL DEFAULT FALSE,
                     display_order INTEGER NOT NULL,
                     min_value INTEGER,
@@ -25,13 +25,13 @@ class QuestionModel:
                     FOREIGN KEY (apiary_id) REFERENCES apiaries(id) ON DELETE CASCADE
                 )
             ''')
-            
+
             # Crear índice para búsquedas por apiario
             cursor.execute('''
                 CREATE INDEX IF NOT EXISTS idx_questions_apiary
                 ON questions (apiary_id)
             ''')
-            
+
             db.commit()
         except Exception as e:
             db.rollback()
@@ -66,21 +66,22 @@ class QuestionModel:
             cursor.close()
 
     @staticmethod
-    def create(db, apiary_id, question_id, question_text, question_type, is_required=False, 
-               display_order=0, min_value=None, max_value=None, options=None, depends_on=None, is_active=True):
+    def create(db, id, apiary_id, question_text, question_type, is_required=False,
+                display_order=0, min_value=None, max_value=None, options=None, depends_on=None, is_active=True):
         """Crea una nueva pregunta en PostgreSQL"""
         cursor = db.cursor()
         try:
+            # El ID se pasa como argumento, no se genera automáticamente
             cursor.execute(
                 '''
                 INSERT INTO questions 
-                (apiary_id, id, question_text, question_type, is_required, display_order, 
-                 min_value, max_value, options, depends_on, is_active)
+                (id, apiary_id, question_text, question_type, is_required, display_order, 
+                min_value, max_value, options, depends_on, is_active)
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 RETURNING id
                 ''',
-                (apiary_id, question_id, question_text, question_type, is_required, display_order,
-                 min_value, max_value, json.dumps(options) if options else None, depends_on, is_active)
+                (id, apiary_id, question_text, question_type, is_required, display_order,
+                min_value, max_value, json.dumps(options) if options else None, depends_on, is_active)
             )
             db.commit()
             return cursor.fetchone()[0]
@@ -110,7 +111,7 @@ class QuestionModel:
                 {}
             ORDER BY display_order
         '''.format("AND is_active = TRUE" if active_only else "")
-        
+
         params = (apiary_id,)
         return QuestionModel._execute_query(db, query, params)
 
@@ -119,34 +120,40 @@ class QuestionModel:
         """Actualiza pregunta en PostgreSQL"""
         if not kwargs:
             raise ValueError("No fields to update")
-        
+
         # Manejo especial para campo options
         if 'options' in kwargs:
             kwargs['options'] = json.dumps(kwargs['options']) if kwargs['options'] else None
-        
+
+        # Evitar la actualización de la clave primaria
+        kwargs.pop('id', None)
+
         set_clause = ", ".join([
-            f"{field} = %s" 
+            f"{field} = %s"
             for field in kwargs.keys()
             if field != 'updated_at'  # Excluir updated_at ya que se maneja automáticamente
         ])
-        
+
+        if not set_clause:
+            raise ValueError("No valid fields to update")
+
         params = list(kwargs.values())
         params.append(question_id)
-        
+
         query = f"""
             UPDATE questions 
             SET {set_clause}, updated_at = CURRENT_TIMESTAMP 
             WHERE id = %s
         """
-        
+
         QuestionModel._execute_update(db, query, params)
 
     @staticmethod
     def delete(db, question_id):
         """Elimina pregunta"""
         QuestionModel._execute_update(
-            db, 
-            'DELETE FROM questions WHERE id = %s', 
+            db,
+            'DELETE FROM questions WHERE id = %s',
             (question_id,)
         )
 
@@ -155,7 +162,7 @@ class QuestionModel:
         """Actualiza orden de visualización usando una única consulta eficiente"""
         # Crear una lista de tuplas (order, question_id)
         order_data = [(order, qid) for order, qid in enumerate(new_order, 1)]
-        
+
         # Usar una consulta UPDATE con CASE para mayor eficiencia
         query = """
             UPDATE questions
@@ -166,9 +173,9 @@ class QuestionModel:
         """.format(
             "\n".join([f"WHEN %s THEN %s" for _ in order_data])
         )
-        
+
         # Preparar parámetros: primero los pares (id, order) para el CASE
         params = [item for pair in order_data for item in (pair[1], pair[0])]
         params.extend([apiary_id, tuple(new_order)])
-        
+
         QuestionModel._execute_update(db, query, params)

@@ -1,7 +1,8 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, g
 from ..controllers.apiary import ApiaryController
 from src.database.db import get_db
 from src.models.users import UserModel
+from src.middleware.jwt import jwt_required
 
 def create_apiary_routes():
     apiary_bp = Blueprint('apiary_routes', __name__)
@@ -47,13 +48,19 @@ def create_apiary_routes():
             return jsonify({'error': str(e)}), 500
 
     @apiary_bp.route('/users/<int:user_id>/apiaries', methods=['GET'])
+    @jwt_required
     def get_user_apiaries(user_id):
+        # Acceso solo permitido al usuario autenticado
+        if int(g.current_user_id) != user_id:
+            return jsonify({'error': 'Acceso no autorizado'}), 403
+            
         db = get_db()
         controller = ApiaryController(db)
-        # Validar existencia del usuario
+        
         user = UserModel.get_by_id(db, user_id)
         if not user:
-            return jsonify({'error': 'User not found'}), 404
+            return jsonify({'error': 'Usuario no encontrado'}), 404
+            
         try:
             apiaries = controller.get_all_apiaries_for_user(user_id)
             return jsonify(apiaries), 200

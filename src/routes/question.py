@@ -11,23 +11,23 @@ def create_question_routes():
         controller = QuestionController(db)
 
         data = request.get_json()
-        required = ['apiary_id', 'question_id', 'question_text', 'question_type']
+        required = ['apiary_id', 'id', 'question_text', 'question_type']
         if not all(field in data for field in required):
-            return jsonify({'error': 'Missing required fields'}), 400
+            return jsonify({'error': 'Faltan campos requeridos: apiary_id, id, question_text, question_type'}), 400
 
         try:
             question_id = controller.create_question(
-                data['apiary_id'],
-                data['question_id'],
-                data['question_text'],
-                data['question_type'],
-                data.get('is_required', False),
-                data.get('display_order', 0),
-                data.get('min_value'),
-                data.get('max_value'),
-                data.get('options'),
-                data.get('depends_on'),
-                data.get('is_active', True)
+                id=data['id'],
+                apiary_id=data['apiary_id'],
+                question_text=data['question_text'],
+                question_type=data['question_type'],
+                is_required=data.get('is_required', False),
+                display_order=data.get('display_order', 0),
+                min_value=data.get('min_value'),
+                max_value=data.get('max_value'),
+                options=data.get('options'),
+                depends_on=data.get('depends_on'),
+                is_active=data.get('is_active', True)
             )
             return jsonify({'id': question_id}), 201
         except Exception as e:

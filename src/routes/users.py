@@ -58,6 +58,12 @@ def create_user_routes():
         user.pop('password', None)
         user.pop('reset_token', None)
         user.pop('reset_token_expiry', None)
+
+        # Explicitly format dates to ISO 8601
+        if user.get('created_at') and hasattr(user['created_at'], 'isoformat'):
+            user['created_at'] = user['created_at'].isoformat()
+        if user.get('updated_at') and hasattr(user['updated_at'], 'isoformat'):
+            user['updated_at'] = user['updated_at'].isoformat()
         
         # Añadir URL de la foto de perfil
         file_handler = current_app.file_handler
@@ -133,6 +139,12 @@ def create_user_routes():
         user.pop('password', None)
         user.pop('reset_token', None)
         user.pop('reset_token_expiry', None)
+
+        # Explicitly format dates to ISO 8601
+        if user.get('created_at') and hasattr(user['created_at'], 'isoformat'):
+            user['created_at'] = user['created_at'].isoformat()
+        if user.get('updated_at') and hasattr(user['updated_at'], 'isoformat'):
+            user['updated_at'] = user['updated_at'].isoformat()
 
         file_handler = current_app.file_handler
         user['profile_picture_url'] = file_handler.get_profile_picture_url(

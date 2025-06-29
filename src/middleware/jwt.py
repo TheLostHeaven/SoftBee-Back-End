@@ -58,10 +58,9 @@ def jwt_required(f):
                     'details': "Falta campo 'sub' en el token"
                 }), 401
             
-            # 5. Almacenar información del usuario en el contexto global
-            g.current_user_id = payload['sub']
-            g.current_user_token = token  # Opcional: almacenar el token completo
-            g.current_user_payload = payload  # Opcional: almacenar el payload completo
+            g.current_user_id = int(payload['sub']) 
+            g.current_user_token = token 
+            g.current_user_payload = payload  
             
             current_app.logger.debug(
                 f"Token válido para usuario: {g.current_user_id}"

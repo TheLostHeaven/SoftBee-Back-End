@@ -156,6 +156,7 @@ def create_user_routes():
         return jsonify(user), 200
     
     @user_bp.route('/static/profile_pictures/<filename>')
+    @jwt_required
     def serve_profile_picture(filename):
         return send_from_directory(
         os.path.join(app.root_path, 'static', 'profile_pictures'),

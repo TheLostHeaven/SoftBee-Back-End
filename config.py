@@ -22,3 +22,4 @@ class Config:
     JWT_ACCESS_TOKEN_EXPIRES = int(os.getenv("EXPIRES_TOKEN_SESSION", 1440))  # 24 horas
     JWT_RESET_TOKEN_EXPIRES = int(os.getenv("EXPIRES_TOKEN_EMAIL", 30))  # 30 minutos
     DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///instance/database.db")
+    BASE_URL = os.getenv("BASE_URL", "http://localhost:5000")

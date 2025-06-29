@@ -75,9 +75,9 @@ class QuestionModel:
             cursor.execute(
                 '''
                 INSERT INTO questions 
-                (apiary_id, question_text, question_type, is_required, display_order, 
+                (id, apiary_id, question_text, question_type, is_required, display_order, 
                 min_value, max_value, options, depends_on, is_active)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                VALUES (DEFAULT, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 RETURNING id
                 ''',
                 (apiary_id, question_text, question_type, is_required, display_order,

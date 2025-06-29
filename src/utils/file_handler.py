@@ -39,4 +39,5 @@ class FileHandler:
     def get_profile_picture_url(self, filename):
         if not filename:
             filename = 'profile_picture.png'
-        return f"/static/profile_pictures/{filename}"
+        base_url = self.app.config.get("BASE_URL", "http://localhost:5000")
+        return f"{base_url}/static/profile_pictures/{filename}"

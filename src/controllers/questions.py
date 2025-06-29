@@ -87,7 +87,7 @@ class QuestionController:
         self.model = QuestionModel
     def create_question(self, apiary_id, question_text, question_type, 
                         is_required=False, display_order=0, min_value=None, 
-                        max_value=None, options=None, depends_on=None, is_active=True):
+                        max_value=None, options=None, depends_on=None, is_active=True, external_id=None):
         """Creates a new question for an apiary"""
         if question_type == 'opciones' and (not options or len(options) < 2):
             raise ValueError("Las preguntas de opción múltiple requieren al menos 2 opciones")
@@ -98,7 +98,7 @@ class QuestionController:
         return self.model.create(
             self.db, apiary_id, question_text, question_type,
             is_required, display_order, min_value, max_value, options,
-            depends_on, is_active)
+            depends_on, is_active, external_id)
 
     def get_question(self, question_id):
         """Gets question by ID"""

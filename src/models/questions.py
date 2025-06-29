@@ -11,6 +11,7 @@ class QuestionModel:
                 CREATE TABLE IF NOT EXISTS questions (
                     id SERIAL PRIMARY KEY,
                     apiary_id INTEGER NOT NULL,
+                    external_id TEXT, -- Nuevo campo para el ID del JSON
                     question_text TEXT NOT NULL,
                     question_type TEXT NOT NULL CHECK(question_type IN ('texto', 'numero', 'opciones', 'rango')),
                     is_required BOOLEAN NOT NULL DEFAULT FALSE,
@@ -22,7 +23,8 @@ class QuestionModel:
                     is_active BOOLEAN NOT NULL DEFAULT TRUE,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    FOREIGN KEY (apiary_id) REFERENCES apiaries(id) ON DELETE CASCADE
+                    FOREIGN KEY (apiary_id) REFERENCES apiaries(id) ON DELETE CASCADE,
+                    UNIQUE(apiary_id, external_id) -- Asegura que external_id sea único por apiario
                 )
             ''')
 
@@ -180,3 +182,91 @@ class QuestionModel:
         params.extend([apiary_id, tuple(new_order)])
 
         QuestionModel._execute_update(db, query, params)
+
+    @staticmethod
+    def get_by_external_id(db, apiary_id, external_id):
+        """Obtiene pregunta por external_id y apiary_id"""
+        results = QuestionModel._execute_query(
+            db,
+            '''SELECT * FROM questions WHERE apiary_id = %s AND external_id = %s''',
+            (apiary_id, external_id)
+        )
+        return results[0] if results else None
+
+    @staticmethod
+    def insert_or_update_default_question(db, apiary_id, external_id, question_text, question_type, is_required, display_order, min_value, max_value, options, depends_on, is_active):
+        existing_question = QuestionModel.get_by_external_id(db, apiary_id, external_id)
+        if existing_question:
+            # Actualizar pregunta existente
+            update_fields = {
+                'question_text': question_text,
+                'question_type': question_type,
+                'is_required': is_required,
+                'display_order': display_order,
+                'min_value': min_value,
+                'max_value': max_value,
+                'options': json.dumps(options) if options else None,
+                'depends_on': depends_on,
+                'is_active': is_active
+            }
+            QuestionModel.update(db, existing_question['id'], **update_fields)
+            return existing_question['id']
+        else:
+            # Insertar nueva pregunta
+            query = """
+                INSERT INTO questions 
+                (apiary_id, external_id, question_text, question_type, is_required, display_order, 
+                min_value, max_value, options, depends_on, is_active)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                RETURNING id
+            """
+            cursor = db.cursor()
+            cursor.execute(query, (apiary_id, external_id, question_text, question_type, is_required, display_order, min_value, max_value, json.dumps(options) if options else None, depends_on, is_active))
+            question_id = cursor.fetchone()[0]
+            db.commit()
+            cursor.close()
+            return question_id
+
+    @staticmethod
+    def get_by_external_id(db, apiary_id, external_id):
+        """Obtiene pregunta por external_id y apiary_id"""
+        results = QuestionModel._execute_query(
+            db,
+            '''SELECT * FROM questions WHERE apiary_id = %s AND external_id = %s''',
+            (apiary_id, external_id)
+        )
+        return results[0] if results else None
+
+    @staticmethod
+    def insert_or_update_default_question(db, apiary_id, external_id, question_text, question_type, is_required, display_order, min_value, max_value, options, depends_on, is_active):
+        existing_question = QuestionModel.get_by_external_id(db, apiary_id, external_id)
+        if existing_question:
+            # Actualizar pregunta existente
+            update_fields = {
+                'question_text': question_text,
+                'question_type': question_type,
+                'is_required': is_required,
+                'display_order': display_order,
+                'min_value': min_value,
+                'max_value': max_value,
+                'options': json.dumps(options) if options else None,
+                'depends_on': depends_on,
+                'is_active': is_active
+            }
+            QuestionModel.update(db, existing_question['id'], **update_fields)
+            return existing_question['id']
+        else:
+            # Insertar nueva pregunta
+            query = """
+                INSERT INTO questions 
+                (apiary_id, external_id, question_text, question_type, is_required, display_order, 
+                min_value, max_value, options, depends_on, is_active)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                RETURNING id
+            """
+            cursor = db.cursor()
+            cursor.execute(query, (apiary_id, external_id, question_text, question_type, is_required, display_order, min_value, max_value, json.dumps(options) if options else None, depends_on, is_active))
+            question_id = cursor.fetchone()[0]
+            db.commit()
+            cursor.close()
+            return question_id

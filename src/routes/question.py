@@ -37,7 +37,7 @@ def create_question_routes():
                     question_text=pregunta_data['pregunta'],
                     question_type=pregunta_data['tipo'],
                     category=pregunta_data.get('categoria'),
-                    is_required=preunta_data['obligatoria'],
+                    is_required=pregunta_data['obligatoria'],
                     display_order=i + 1,
                     min_value=pregunta_data.get('min'),
                     max_value=pregunta_data.get('max'),

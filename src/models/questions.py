@@ -24,6 +24,7 @@ class QuestionModel:
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     FOREIGN KEY (apiary_id) REFERENCES apiaries(id) ON DELETE CASCADE,
                     UNIQUE(apiary_id, external_id)
+                )
             ''')
             cursor.execute('CREATE INDEX IF NOT EXISTS idx_questions_apiary ON questions (apiary_id)')
             db.commit()

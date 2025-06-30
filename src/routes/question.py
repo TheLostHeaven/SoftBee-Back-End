@@ -26,7 +26,7 @@ def create_question_routes():
             for i, pregunta in enumerate(config['preguntas']):
                 # Mapeo de tipos: en el JSON viene 'opcion', en la BD es 'opciones'
                 tipo_pregunta = pregunta['tipo']
-                if tipo_pregunta == 'opcion':
+                if tipo_pregunta == 'opciones':
                     tipo_pregunta = 'opciones'
                 elif tipo_pregunta == 'rango':
                     tipo_pregunta = 'rango'

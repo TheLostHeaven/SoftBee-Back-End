@@ -80,6 +80,7 @@
 #             'id_externo': raw_question['id_externo']
 #         }import json
 from ..models.questions import QuestionModel
+from ..models.apiary import ApiaryModel
 
 class QuestionController:
     def __init__(self, db):
@@ -90,6 +91,10 @@ class QuestionController:
                         is_required=False, display_order=0, min_value=None, 
                         max_value=None, options=None, depends_on=None, 
                         is_active=True, external_id=None):
+        
+        if not ApiaryModel.get_by_id(self.db, apiary_id):
+            raise ValueError(f"El apiario con id {apiary_id} no existe.")
+
         if question_type == 'opciones' and (not options or len(options) < 2):
             raise ValueError("Las preguntas de opción múltiple requieren al menos 2 opciones")
 

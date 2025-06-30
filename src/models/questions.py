@@ -13,6 +13,7 @@ class QuestionModel:
                     external_id TEXT,
                     question_text TEXT NOT NULL,
                     question_type TEXT NOT NULL CHECK(question_type IN ('texto', 'numero', 'opciones', 'rango')),
+                    category VARCHAR(100),
                     is_required BOOLEAN NOT NULL DEFAULT FALSE,
                     display_order INTEGER NOT NULL,
                     min_value INTEGER,
@@ -58,7 +59,7 @@ class QuestionModel:
             cursor.close()
 
     @staticmethod
-    def create(db, apiary_id, question_text, question_type, is_required=False,
+    def create(db, apiary_id, question_text, question_type, category=None, is_required=False,
                display_order=0, min_value=None, max_value=None, options=None, 
                depends_on=None, is_active=True, external_id=None):
         cursor = db.cursor()
@@ -66,12 +67,12 @@ class QuestionModel:
             cursor.execute(
                 '''
                 INSERT INTO questions 
-                (apiary_id, external_id, question_text, question_type, is_required, display_order, 
+                (apiary_id, external_id, question_text, question_type, category, is_required, display_order, 
                 min_value, max_value, options, depends_on, is_active)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 RETURNING id
                 ''',
-                (apiary_id, external_id, question_text, question_type, is_required, display_order,
+                (apiary_id, external_id, question_text, question_type, category, is_required, display_order,
                  min_value, max_value, json.dumps(options) if options else None, depends_on, is_active)
             )
             question_id = cursor.fetchone()[0]
@@ -164,12 +165,13 @@ class QuestionModel:
         return results[0] if results else None
 
     @staticmethod
-    def insert_or_update_default_question(db, apiary_id, external_id, question_text, question_type, is_required, display_order, min_value, max_value, options, depends_on, is_active):
+    def insert_or_update_default_question(db, apiary_id, external_id, question_text, question_type, category, is_required, display_order, min_value, max_value, options, depends_on, is_active):
         existing_question = QuestionModel.get_by_external_id(db, apiary_id, external_id)
         if existing_question:
             update_fields = {
                 'question_text': question_text,
                 'question_type': question_type,
+                'category': category,
                 'is_required': is_required,
                 'display_order': display_order,
                 'min_value': min_value,
@@ -182,6 +184,6 @@ class QuestionModel:
             return existing_question['id']
         else:
             return QuestionModel.create(
-                db, apiary_id, question_text, question_type, is_required,
+                db, apiary_id, question_text, question_type, category, is_required,
                 display_order, min_value, max_value, options, depends_on, is_active, external_id
             )

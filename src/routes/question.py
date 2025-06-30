@@ -26,21 +26,13 @@ def create_question_routes():
             for i, pregunta in enumerate(config['preguntas']):
                 # Mapeo de tipos: en el JSON viene 'opcion', en la BD es 'opciones'
                 tipo_pregunta = pregunta['tipo']
-                if tipo_pregunta == 'opciones':
-                    tipo_pregunta = 'opciones'
-                elif tipo_pregunta == 'rango':
-                    tipo_pregunta = 'rango'
-                elif tipo_pregunta == 'numero':
-                    tipo_pregunta = 'numero'
-                else:
-                    tipo_pregunta = 'texto'  # Por defecto o manejar error
 
                 # Crear la pregunta
                 question_id = controller.create_question(
                     apiary_id=apiary_id,
                     external_id=pregunta['id'],
                     question_text=pregunta['pregunta'],
-                    question_type=tipo_pregunta,
+                    question_type=pregunta['tipo'],
                     is_required=pregunta['obligatoria'],
                     display_order=i + 1,
                     min_value=pregunta.get('min'),

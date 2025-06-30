@@ -55,46 +55,52 @@ class MonitoreoController:
         """Elimina un monitoreo"""
         return self.model.delete(self.db, monitoreo_id)
 
-    def get_system_stats(self):
-        """Obtiene estadísticas del sistema"""
+    def get_system_stats(self, user_id):
+        """Obtiene estadísticas del sistema para un usuario específico"""
         cursor = self.db.cursor()
-        
-        # Total de apiarios
-        cursor.execute("SELECT COUNT(*) FROM apiarios")
+
+        # Total de apiarios para el usuario
+        cursor.execute("SELECT COUNT(*) FROM apiaries WHERE user_id = %s", (user_id,))
         total_apiarios = cursor.fetchone()[0]
-        
-        # Total de colmenas
-        cursor.execute("SELECT COUNT(*) FROM colmenas")
+
+        # Total de colmenas para el usuario
+        cursor.execute("SELECT COUNT(*) FROM beehives WHERE apiary_id IN (SELECT id FROM apiaries WHERE user_id = %s)", (user_id,))
         total_colmenas = cursor.fetchone()[0]
-        
-        # Total de monitoreos
-        cursor.execute("SELECT COUNT(*) FROM monitoreos")
+
+        # Total de monitoreos para el usuario
+        cursor.execute("SELECT COUNT(*) FROM monitoreos WHERE apiary_id IN (SELECT id FROM apiaries WHERE user_id = %s)", (user_id,))
         total_monitoreos = cursor.fetchone()[0]
-        
-        # Monitoreos del último mes (PostgreSQL)
+
+        # Monitoreos pendientes para el usuario
+        cursor.execute("SELECT COUNT(*) FROM monitoreos WHERE sincronizado = FALSE AND apiary_id IN (SELECT id FROM apiaries WHERE user_id = %s)", (user_id,))
+        monitoreos_pendientes = cursor.fetchone()[0] if cursor.rowcount > 0 else 0
+
+        # Monitoreos del último mes para el usuario
         cursor.execute("""
             SELECT COUNT(*) FROM monitoreos 
-            WHERE fecha >= CURRENT_DATE - INTERVAL '30 days'
-        """)
+            WHERE fecha >= CURRENT_DATE - INTERVAL '30 days' AND apiary_id IN (SELECT id FROM apiaries WHERE user_id = %s)
+        """, (user_id,))
         monitoreos_mes = cursor.fetchone()[0]
-        
-        # Monitoreos por apiario
+
+        # Monitoreos por apiario para el usuario
         cursor.execute("""
-            SELECT a.nombre, COUNT(m.id) as total
-            FROM apiarios a
-            LEFT JOIN monitoreos m ON a.id = m.id_apiario
-            GROUP BY a.id, a.nombre
+            SELECT a.name, COUNT(m.id) as total
+            FROM apiaries a
+            LEFT JOIN monitoreos m ON a.id = m.apiary_id
+            WHERE a.user_id = %s
+            GROUP BY a.id, a.name
             ORDER BY total DESC
-        """)
+        """, (user_id,))
         monitoreos_por_apiario = [
             {'apiario': row[0], 'total': row[1]} 
             for row in cursor.fetchall()
         ]
-        
+
         return {
             'total_apiarios': total_apiarios,
             'total_colmenas': total_colmenas,
             'total_monitoreos': total_monitoreos,
+            'monitoreos_pendientes': monitoreos_pendientes,
             'monitoreos_ultimo_mes': monitoreos_mes,
             'monitoreos_por_apiario': monitoreos_por_apiario,
             'timestamp': datetime.utcnow().isoformat()

@@ -99,13 +99,15 @@ def create_monitoreo_routes():
         }), 200
 
     @monitoreo_bp.route('/stats', methods=['GET'])
+    @jwt_required
     def get_stats():
         """Endpoint para obtener estadísticas del sistema"""
         db = get_db()
         controller = MonitoreoController(db)
+        user_id = g.current_user_id
         
         try:
-            stats = controller.get_system_stats()
+            stats = controller.get_system_stats(user_id)
             return jsonify(stats), 200
         except Exception as e:
             return jsonify({'error': str(e)}), 500

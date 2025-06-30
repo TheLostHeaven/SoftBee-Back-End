@@ -23,23 +23,26 @@ def create_question_routes():
                 config = json.load(f)
             
             preguntas_cargadas = []
-            for i, pregunta in enumerate(config['preguntas']):
-                # Mapeo de tipos: en el JSON viene 'opcion', en la BD es 'opciones'
-                tipo_pregunta = pregunta['tipo']
+            from src.models.questions import QuestionModel
+            for i, pregunta_data in enumerate(config['preguntas']):
+                # Verificar si la pregunta ya existe para este apiario
+                existing_question = QuestionModel.get_by_external_id(db, apiary_id, pregunta_data['id'])
+                if existing_question:
+                    continue  # Si ya existe, no la volvemos a crear
 
-                # Crear la pregunta
+                # Crear la pregunta si no existe
                 question_id = controller.create_question(
                     apiary_id=apiary_id,
-                    external_id=pregunta['id'],
-                    question_text=pregunta['pregunta'],
-                    question_type=pregunta['tipo'],
-                    category=pregunta.get('categoria'),
-                    is_required=pregunta['obligatoria'],
+                    external_id=pregunta_data['id'],
+                    question_text=pregunta_data['pregunta'],
+                    question_type=pregunta_data['tipo'],
+                    category=pregunta_data.get('categoria'),
+                    is_required=preunta_data['obligatoria'],
                     display_order=i + 1,
-                    min_value=pregunta.get('min'),
-                    max_value=pregunta.get('max'),
-                    options=pregunta.get('opciones'),
-                    depends_on=None,  # No hay dependencias en el JSON
+                    min_value=pregunta_data.get('min'),
+                    max_value=pregunta_data.get('max'),
+                    options=pregunta_data.get('opciones'),
+                    depends_on=None,
                     is_active=True
                 )
                 preguntas_cargadas.append(question_id)
@@ -136,5 +139,20 @@ def create_question_routes():
             return jsonify({'message': 'Orden de preguntas actualizado'}), 200
         except Exception as e:
             return jsonify({'error': str(e)}), 400
+
+    @question_bp.route('/questions/bank', methods=['GET'])
+    def get_question_bank():
+        """Devuelve el banco de preguntas predeterminadas desde el archivo JSON"""
+        try:
+            config_path = os.path.join(current_app.root_path, 'config', 'preguntas_config.json')
+            if not os.path.exists(config_path):
+                return jsonify({'error': 'Archivo de configuración del banco de preguntas no encontrado'}), 404
+
+            with open(config_path, 'r', encoding='utf-8') as f:
+                config = json.load(f)
+            
+            return jsonify(config['preguntas']), 200
+        except Exception as e:
+            return jsonify({'error': str(e)}), 500
 
     return question_bp

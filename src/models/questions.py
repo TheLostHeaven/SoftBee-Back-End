@@ -110,20 +110,30 @@ class QuestionModel:
         if not kwargs:
             raise ValueError("No fields to update")
 
+        # Explicitly handle options serialization
         if 'options' in kwargs:
-            kwargs['options'] = json.dumps(kwargs['options']) if kwargs['options'] else None
+            options_data = kwargs.pop('options')
+            if options_data is not None:
+                kwargs['options'] = json.dumps(options_data)
+            else:
+                kwargs['options'] = None
 
-        kwargs.pop('id', None)
-        set_clause = ", ".join([
-            f"{field} = %s"
-            for field in kwargs.keys()
-            if field != 'updated_at'
-        ])
+        kwargs.pop('id', None) # Prevent changing the ID
+        
+        # Filter out keys that are not columns in the table to be safe
+        valid_fields = [
+            'external_id', 'question_text', 'question_type', 'category', 
+            'is_required', 'display_order', 'min_value', 'max_value', 
+            'options', 'depends_on', 'is_active'
+        ]
+        
+        update_fields = {k: v for k, v in kwargs.items() if k in valid_fields}
 
-        if not set_clause:
+        if not update_fields:
             raise ValueError("No valid fields to update")
 
-        params = list(kwargs.values())
+        set_clause = ", ".join([f"{field} = %s" for field in update_fields.keys()])
+        params = list(update_fields.values())
         params.append(question_id)
 
         query = f"""

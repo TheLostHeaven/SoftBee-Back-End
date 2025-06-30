@@ -1,124 +1,85 @@
 {
   "preguntas": [
     {
-      "id": "estado_general_colmena",
+      "id": "estado_general",
+      "categoria": "Estado de la Colmena",
       "pregunta": "¿Cuál es el estado general de la colmena?",
-      "tipo": "opcion",
-      "opciones": ["Excelente", "Bueno", "Regular", "Malo", "Crítico"],
-      "obligatoria": true
+      "tipo": "opciones",
+      "obligatoria": true,
+      "opciones": ["Excelente", "Bueno", "Regular", "Malo"]
     },
     {
-      "id": "presencia_reina",
-      "pregunta": "¿Se observa presencia de la reina?",
-      "tipo": "opcion",
-      "opciones": [
-        "Sí, vista directamente",
-        "Sí, por evidencia (huevos/larvas)",
-        "No confirmada",
-        "Ausente"
-      ],
-      "obligatoria": true
+      "id": "poblacion",
+      "categoria": "Estado de la Colmena",
+      "pregunta": "Nivel de población",
+      "tipo": "opciones",
+      "obligatoria": true,
+      "opciones": ["Alta", "Media", "Baja"]
     },
     {
-      "id": "nivel_poblacion",
-      "pregunta": "Nivel de población de abejas",
-      "tipo": "opcion",
-      "opciones": ["Muy alta", "Alta", "Media", "Baja", "Muy baja"],
-      "obligatoria": false
+      "id": "comportamiento",
+      "categoria": "Estado de la Colmena",
+      "pregunta": "Comportamiento de las abejas",
+      "tipo": "opciones",
+      "obligatoria": true,
+      "opciones": ["Dócil", "Nervioso", "Agresivo"]
+    },
+    {
+      "id": "cantidad_cria",
+      "categoria": "Producción",
+      "pregunta": "Cantidad de cuadros de cría",
+      "tipo": "numero",
+      "obligatoria": true,
+      "min": 0,
+      "max": 20
     },
     {
       "id": "cantidad_miel",
-      "pregunta": "Cantidad de miel estimada (kg)",
+      "categoria": "Producción",
+      "pregunta": "Cantidad de cuadros de miel",
       "tipo": "numero",
+      "obligatoria": true,
       "min": 0,
-      "max": 100,
+      "max": 20
+    },
+    {
+      "id": "presencia_reina",
+      "categoria": "Salud",
+      "pregunta": "¿Se observó a la reina?",
+      "tipo": "opciones",
+      "obligatoria": true,
+      "opciones": ["Sí", "No"]
+    },
+    {
+      "id": "celdas_reales",
+      "categoria": "Salud",
+      "pregunta": "¿Presencia de celdas reales?",
+      "tipo": "opciones",
+      "obligatoria": true,
+      "opciones": ["Sí", "No"]
+    },
+    {
+      "id": "enfermedades",
+      "categoria": "Salud",
+      "pregunta": "¿Signos de enfermedades (Loque, Varroa, etc.)?",
+      "tipo": "texto",
       "obligatoria": false
     },
     {
-      "id": "estado_panales",
-      "pregunta": "Estado de los panales",
-      "tipo": "opcion",
-      "opciones": [
-        "Nuevos",
-        "Buenos",
-        "Regulares",
-        "Viejos",
-        "Necesitan reemplazo"
-      ],
-      "obligatoria": false
+      "id": "necesita_alimentacion",
+      "categoria": "Alimentación",
+      "pregunta": "¿Necesita alimentación suplementaria?",
+      "tipo": "opciones",
+      "obligatoria": true,
+      "opciones": ["Sí", "No"]
     },
     {
-      "id": "porcentaje_celdas_operculadas",
-      "pregunta": "Porcentaje de celdas operculadas",
-      "tipo": "rango",
-      "obligatoria": false
-    },
-    {
-      "id": "signos_enfermedades",
-      "pregunta": "¿Se observan signos de enfermedades?",
-      "tipo": "opcion",
-      "opciones": [
-        "No",
-        "Varroa",
-        "Nosema",
-        "Loque americana",
-        "Loque europea",
-        "Otras"
-      ],
-      "obligatoria": true
-    },
-    {
-      "id": "comportamiento_abejas",
-      "pregunta": "Comportamiento de las abejas",
-      "tipo": "opcion",
-      "opciones": [
-        "Normal",
-        "Agresivas",
-        "Letárgicas",
-        "Desorientadas",
-        "Anormal"
-      ],
-      "obligatoria": false
-    },
-    {
-      "id": "requiere_alimentacion",
-      "pregunta": "¿Requiere alimentación suplementaria?",
-      "tipo": "opcion",
-      "opciones": ["No", "Sí - Jarabe", "Sí - Polen", "Sí - Ambos", "Urgente"],
-      "obligatoria": false
-    },
-    {
-      "id": "reservas_miel",
-      "pregunta": "Reservas de miel estimadas",
-      "tipo": "opcion",
-      "opciones": [
-        "Abundantes",
-        "Suficientes",
-        "Escasas",
-        "Muy escasas",
-        "Sin reservas"
-      ],
-      "obligatoria": false
-    },
-    {
-      "id": "estado_estructura",
-      "pregunta": "Estado de la colmena (estructura)",
-      "tipo": "opcion",
-      "opciones": [
-        "Excelente",
-        "Bueno",
-        "Necesita reparaciones menores",
-        "Necesita reparaciones mayores",
-        "Crítico"
-      ],
-      "obligatoria": false
-    },
-    {
-      "id": "limpieza_realizada",
-      "pregunta": "¿Se realizó limpieza?",
-      "tipo": "opcion",
-      "opciones": ["Sí", "No", "Parcial", "No necesaria"],
-      "obligatoria": false
+      "id": "espacio_disponible",
+      "categoria": "Mantenimiento",
+      "pregunta": "¿Necesita más espacio (alzas)?",
+      "tipo": "opciones",
+      "obligatoria": true,
+      "opciones": ["Sí", "No"]
     }
   ]
 }

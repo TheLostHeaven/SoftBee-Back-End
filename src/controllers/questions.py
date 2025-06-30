@@ -85,10 +85,11 @@ class QuestionController:
     def __init__(self, db):
         self.db = db
         self.model = QuestionModel
+        
     def create_question(self, apiary_id, question_text, question_type, 
                         is_required=False, display_order=0, min_value=None, 
-                        max_value=None, options=None, depends_on=None, is_active=True, external_id=None):
-        """Creates a new question for an apiary"""
+                        max_value=None, options=None, depends_on=None, 
+                        is_active=True, external_id=None):
         if question_type == 'opciones' and (not options or len(options) < 2):
             raise ValueError("Las preguntas de opción múltiple requieren al menos 2 opciones")
 
@@ -101,35 +102,26 @@ class QuestionController:
             depends_on, is_active, external_id)
 
     def get_question(self, question_id):
-        """Gets question by ID"""
         return self.model.get_by_id(self.db, question_id)
 
     def get_apiary_questions(self, apiary_id, active_only=True):
-        """Gets all questions for an apiary"""
         return self.model.get_by_apiary(self.db, apiary_id, active_only)
 
     def update_question(self, question_id, **kwargs):
-        """Updates question information"""
         if 'question_type' in kwargs:
-            if kwargs['question_type'] == 'option' and ('options' not in kwargs or len(kwargs['options']) < 2):
+            if kwargs['question_type'] == 'opciones' and ('options' not in kwargs or len(kwargs['options']) < 2):
                 raise ValueError("Option questions require at least 2 options")
-
-            if kwargs['question_type'] == 'number' and ('min_value' not in kwargs or 'max_value' not in kwargs):
+            if kwargs['question_type'] == 'numero' and ('min_value' not in kwargs or 'max_value' not in kwargs):
                 raise ValueError("Number questions require min and max values")
-
         self.model.update(self.db, question_id, **kwargs)
 
     def delete_question(self, question_id):
-        """Deletes a question"""
         self.model.delete(self.db, question_id)
 
     def reorder_questions(self, apiary_id, new_order):
-        """Reorders questions for an apiary"""
         if len(new_order) != len(set(new_order)):
             raise ValueError("Duplicate question IDs in order list")
-
         current_questions = {q['id'] for q in self.get_apiary_questions(apiary_id, False)}
         if set(new_order) != current_questions:
             raise ValueError("Order list doesn't match apiary's questions")
-
         self.model.reorder(self.db, apiary_id, new_order)

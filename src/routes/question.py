@@ -1,4 +1,4 @@
-from flask import Blueprint, request, jsonify, current_app, g
+from flask import Blueprint, request, jsonify, current_app
 from ..controllers.questions import QuestionController
 from src.database.db import get_db
 import json
@@ -7,73 +7,67 @@ import os
 def create_question_routes():
     question_bp = Blueprint('question_routes', __name__)
 
-    @question_bp.route('/questions/load_defaults', methods=['POST'])
-    def load_default_questions():
+    @question_bp.route('/questions/load_defaults/<int:apiary_id>', methods=['POST'])
+    def load_default_questions(apiary_id):
+        """Carga preguntas predeterminadas desde un archivo JSON"""
         db = get_db()
         controller = QuestionController(db)
-        data = request.get_json()
-
-        apiary_id = data.get('apiary_id')
-        if not apiary_id:
-            return jsonify({'error': 'apiary_id es requerido'}), 400
-
+        
+        # Ruta al archivo de configuración
         config_path = os.path.join(current_app.root_path, 'config', 'preguntas_config.json')
         if not os.path.exists(config_path):
-            return jsonify({'error': 'Archivo de configuración de preguntas no encontrado'}), 500
+            return jsonify({'error': 'Archivo de configuración no encontrado'}), 404
 
         try:
             with open(config_path, 'r', encoding='utf-8') as f:
                 config = json.load(f)
-
+            
             preguntas_cargadas = []
-            # Cargar preguntas generales
-            for i, p in enumerate(config.get('preguntas', [])):
+            for i, pregunta in enumerate(config['preguntas']):
+                # Mapeo de tipos: en el JSON viene 'opcion', en la BD es 'opciones'
+                tipo_pregunta = pregunta['tipo']
+                if tipo_pregunta == 'opcion':
+                    tipo_pregunta = 'opciones'
+                elif tipo_pregunta == 'rango':
+                    tipo_pregunta = 'rango'
+                elif tipo_pregunta == 'numero':
+                    tipo_pregunta = 'numero'
+                else:
+                    tipo_pregunta = 'texto'  # Por defecto o manejar error
+
+                # Crear la pregunta
                 question_id = controller.create_question(
                     apiary_id=apiary_id,
-                    external_id=p.get('id'),
-                    question_text=p.get('pregunta'),
-                    question_type=p.get('tipo'),
-                    is_required=p.get('obligatoria', False),
-                    display_order=i + 1, # Asignar un orden inicial
-                    min_value=p.get('min'),
-                    max_value=p.get('max'),
-                    options=p.get('opciones'),
-                    depends_on=p.get('depende_de'),
+                    external_id=pregunta['id'],
+                    question_text=pregunta['pregunta'],
+                    question_type=tipo_pregunta,
+                    is_required=pregunta['obligatoria'],
+                    display_order=i + 1,
+                    min_value=pregunta.get('min'),
+                    max_value=pregunta.get('max'),
+                    options=pregunta.get('opciones'),
+                    depends_on=None,  # No hay dependencias en el JSON
                     is_active=True
                 )
                 preguntas_cargadas.append(question_id)
             
-            # Cargar preguntas de cámara de producción
-            for i, p in enumerate(config.get('preguntas_camara_produccion', [])):
-                question_id = controller.create_question(
-                    apiary_id=apiary_id,
-                    external_id=p.get('id'),
-                    question_text=p.get('pregunta'),
-                    question_type=p.get('tipo'),
-                    is_required=p.get('obligatoria', False),
-                    display_order=len(config.get('preguntas', [])) + i + 1, # Continuar el orden
-                    min_value=p.get('min'),
-                    max_value=p.get('max'),
-                    options=p.get('opciones'),
-                    depends_on=p.get('depende_de'),
-                    is_active=True
-                )
-                preguntas_cargadas.append(question_id)
-
-            return jsonify({'message': f'Se cargaron {len(preguntas_cargadas)} preguntas por defecto.', 'ids': preguntas_cargadas}), 200
-
+            return jsonify({
+                'message': f'Se cargaron {len(preguntas_cargadas)} preguntas por defecto',
+                'question_ids': preguntas_cargadas
+            }), 200
         except Exception as e:
             return jsonify({'error': str(e)}), 500
 
     @question_bp.route('/questions', methods=['POST'])
     def create_question():
+        """Crea una nueva pregunta personalizada"""
         db = get_db()
         controller = QuestionController(db)
-
         data = request.get_json()
-        required = ['apiary_id', 'question_text', 'question_type']
-        if not all(field in data for field in required):
-            return jsonify({'error': 'Faltan campos requeridos: apiary_id, question_text, question_type'}), 400
+
+        required_fields = ['apiary_id', 'question_text', 'question_type']
+        if not all(field in data for field in required_fields):
+            return jsonify({'error': 'Faltan campos requeridos'}), 400
 
         try:
             question_id = controller.create_question(
@@ -93,62 +87,59 @@ def create_question_routes():
         except Exception as e:
             return jsonify({'error': str(e)}), 400
 
-    @question_bp.route('/questions/<question_id>', methods=['GET'])
+    @question_bp.route('/questions/<int:question_id>', methods=['GET'])
     def get_question(question_id):
+        """Obtiene una pregunta por su ID"""
         db = get_db()
         controller = QuestionController(db)
-
         question = controller.get_question(question_id)
-        if not question:
-            return jsonify({'error': 'Question not found'}), 404
-        return jsonify(question), 200
+        if question:
+            return jsonify(question), 200
+        return jsonify({'error': 'Pregunta no encontrada'}), 404
 
     @question_bp.route('/apiaries/<int:apiary_id>/questions', methods=['GET'])
     def get_apiary_questions(apiary_id):
+        """Obtiene todas las preguntas de un apiario"""
         db = get_db()
         controller = QuestionController(db)
-
         active_only = request.args.get('active_only', 'true').lower() == 'true'
         questions = controller.get_apiary_questions(apiary_id, active_only)
         return jsonify(questions), 200
 
-    @question_bp.route('/questions/<question_id>', methods=['PUT'])
+    @question_bp.route('/questions/<int:question_id>', methods=['PUT'])
     def update_question(question_id):
+        """Actualiza una pregunta existente"""
         db = get_db()
         controller = QuestionController(db)
-
         data = request.get_json()
-        if not data:
-            return jsonify({'error': 'No data provided'}), 400
-
         try:
             controller.update_question(question_id, **data)
-            return jsonify({'message': 'Question updated'}), 200
+            return jsonify({'message': 'Pregunta actualizada'}), 200
         except Exception as e:
             return jsonify({'error': str(e)}), 400
 
-    @question_bp.route('/questions/<question_id>', methods=['DELETE'])
+    @question_bp.route('/questions/<int:question_id>', methods=['DELETE'])
     def delete_question(question_id):
+        """Elimina una pregunta"""
         db = get_db()
         controller = QuestionController(db)
-
         try:
             controller.delete_question(question_id)
-            return jsonify({'message': 'Question deleted'}), 200
+            return jsonify({'message': 'Pregunta eliminada'}), 200
         except Exception as e:
             return jsonify({'error': str(e)}), 400
 
     @question_bp.route('/apiaries/<int:apiary_id>/questions/reorder', methods=['PUT'])
     def reorder_questions(apiary_id):
+        """Reordena las preguntas de un apiario"""
         db = get_db()
         controller = QuestionController(db)
-
-        if 'order' not in request.json or not isinstance(request.json['order'], list):
-            return jsonify({'error': 'Order list required'}), 400
-
+        data = request.get_json()
+        if 'order' not in data or not isinstance(data['order'], list):
+            return jsonify({'error': 'Se requiere una lista de IDs en "order"'}), 400
         try:
-            controller.reorder_questions(apiary_id, request.json['order'])
-            return jsonify({'message': 'Questions reordered'}), 200
+            controller.reorder_questions(apiary_id, data['order'])
+            return jsonify({'message': 'Orden de preguntas actualizado'}), 200
         except Exception as e:
             return jsonify({'error': str(e)}), 400
 

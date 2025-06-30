@@ -13,6 +13,7 @@ class QuestionModel:
                     external_id TEXT,
                     question_text TEXT NOT NULL,
                     question_type TEXT NOT NULL CHECK(question_type IN ('texto', 'numero', 'opciones', 'rango')),
+                    category VARCHAR(100),
                     is_required BOOLEAN NOT NULL DEFAULT FALSE,
                     display_order INTEGER NOT NULL,
                     min_value INTEGER,
@@ -58,7 +59,7 @@ class QuestionModel:
             cursor.close()
 
     @staticmethod
-    def create(db, apiary_id, question_text, question_type, is_required=False,
+    def create(db, apiary_id, question_text, question_type, category=None, is_required=False,
                display_order=0, min_value=None, max_value=None, options=None, 
                depends_on=None, is_active=True, external_id=None):
         cursor = db.cursor()
@@ -66,12 +67,12 @@ class QuestionModel:
             cursor.execute(
                 '''
                 INSERT INTO questions 
-                (apiary_id, external_id, question_text, question_type, is_required, display_order, 
+                (apiary_id, external_id, question_text, question_type, category, is_required, display_order, 
                 min_value, max_value, options, depends_on, is_active)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 RETURNING id
                 ''',
-                (apiary_id, external_id, question_text, question_type, is_required, display_order,
+                (apiary_id, external_id, question_text, question_type, category, is_required, display_order,
                  min_value, max_value, json.dumps(options) if options else None, depends_on, is_active)
             )
             question_id = cursor.fetchone()[0]
@@ -109,20 +110,30 @@ class QuestionModel:
         if not kwargs:
             raise ValueError("No fields to update")
 
+        # Explicitly handle options serialization
         if 'options' in kwargs:
-            kwargs['options'] = json.dumps(kwargs['options']) if kwargs['options'] else None
+            options_data = kwargs.pop('options')
+            if options_data is not None:
+                kwargs['options'] = json.dumps(options_data)
+            else:
+                kwargs['options'] = None
 
-        kwargs.pop('id', None)
-        set_clause = ", ".join([
-            f"{field} = %s"
-            for field in kwargs.keys()
-            if field != 'updated_at'
-        ])
+        kwargs.pop('id', None) # Prevent changing the ID
+        
+        # Filter out keys that are not columns in the table to be safe
+        valid_fields = [
+            'external_id', 'question_text', 'question_type', 'category', 
+            'is_required', 'display_order', 'min_value', 'max_value', 
+            'options', 'depends_on', 'is_active'
+        ]
+        
+        update_fields = {k: v for k, v in kwargs.items() if k in valid_fields}
 
-        if not set_clause:
+        if not update_fields:
             raise ValueError("No valid fields to update")
 
-        params = list(kwargs.values())
+        set_clause = ", ".join([f"{field} = %s" for field in update_fields.keys()])
+        params = list(update_fields.values())
         params.append(question_id)
 
         query = f"""
@@ -164,12 +175,13 @@ class QuestionModel:
         return results[0] if results else None
 
     @staticmethod
-    def insert_or_update_default_question(db, apiary_id, external_id, question_text, question_type, is_required, display_order, min_value, max_value, options, depends_on, is_active):
+    def insert_or_update_default_question(db, apiary_id, external_id, question_text, question_type, category, is_required, display_order, min_value, max_value, options, depends_on, is_active):
         existing_question = QuestionModel.get_by_external_id(db, apiary_id, external_id)
         if existing_question:
             update_fields = {
                 'question_text': question_text,
                 'question_type': question_type,
+                'category': category,
                 'is_required': is_required,
                 'display_order': display_order,
                 'min_value': min_value,
@@ -182,6 +194,6 @@ class QuestionModel:
             return existing_question['id']
         else:
             return QuestionModel.create(
-                db, apiary_id, question_text, question_type, is_required,
+                db, apiary_id, question_text, question_type, category, is_required,
                 display_order, min_value, max_value, options, depends_on, is_active, external_id
             )

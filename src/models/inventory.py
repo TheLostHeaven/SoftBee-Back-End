@@ -52,7 +52,18 @@ class InventoryModel:
         return cursor
 
     @staticmethod
-    def get_all(db, apiary_id):
+    def get_by_user(db, user_id):
+        return InventoryModel._execute_query(
+            db,
+            '''SELECT i.* FROM inventory i
+               JOIN apiaries a ON i.apiary_id = a.id
+               WHERE a.user_id = %s
+               ORDER BY i.apiary_id, i.id''',
+            (user_id,)
+        )
+
+    @staticmethod
+    def get_by_apiary(db, apiary_id):
         return InventoryModel._execute_query(
             db,
             'SELECT * FROM inventory WHERE apiary_id = %s ORDER BY id',
@@ -71,7 +82,8 @@ class InventoryModel:
     def create(db, apiary_id, item_name, quantity=0, unit='unit'):
         cursor = InventoryModel._execute_update(
             db,
-            'INSERT INTO inventory (apiary_id, item_name, quantity, unit) VALUES (%s, %s, %s, %s) RETURNING id',
+            '''INSERT INTO inventory (apiary_id, item_name, quantity, unit) 
+               VALUES (%s, %s, %s, %s) RETURNING id''',
             (apiary_id, item_name, quantity, unit)
         )
         item_id = cursor.fetchone()[0]
@@ -130,7 +142,9 @@ class InventoryModel:
     def adjust_quantity(db, item_id, amount):
         cursor = InventoryModel._execute_update(
             db,
-            'UPDATE inventory SET quantity = quantity + %s, updated_at = CURRENT_TIMESTAMP WHERE id = %s',
+            '''UPDATE inventory 
+               SET quantity = quantity + %s, updated_at = CURRENT_TIMESTAMP 
+               WHERE id = %s''',
             (amount, item_id)
         )
         cursor.close()

@@ -5,6 +5,17 @@ class InventoryController:
         self.db = db
         self.model = InventoryModel
 
+    def check_apiary_access(self, user_id, apiary_id):
+        """Verifica si el usuario tiene acceso al apiario"""
+        cursor = self.db.cursor()
+        cursor.execute(
+            'SELECT 1 FROM apiaries WHERE id = %s AND user_id = %s',
+            (apiary_id, user_id)
+        )
+        result = cursor.fetchone() is not None
+        cursor.close()
+        return result
+
     def create_item(self, apiary_id, item_name, quantity=0, unit='unit'):
         """Creates a new inventory item for an apiary"""
         return self.model.create(self.db, apiary_id, item_name, quantity, unit)
@@ -15,7 +26,11 @@ class InventoryController:
 
     def get_apiary_items(self, apiary_id):
         """Gets all inventory items for an apiary"""
-        return self.model.get_all(self.db, apiary_id)
+        return self.model.get_by_apiary(self.db, apiary_id)
+
+    def get_user_items(self, user_id):
+        """Gets all inventory items for a user"""
+        return self.model.get_by_user(self.db, user_id)
 
     def update_item(self, item_id, **kwargs):
         """Updates inventory item information"""

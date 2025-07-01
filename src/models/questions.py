@@ -1,5 +1,3 @@
-import psycopg2
-import psycopg2.extras
 import json
 from datetime import datetime
 
@@ -25,6 +23,7 @@ class QuestionModel:
                     is_active BOOLEAN NOT NULL DEFAULT TRUE,
                     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY (apiary_id) REFERENCES apiaries(id) ON DELETE CASCADE
                 )
             ''')
             cursor.execute('CREATE INDEX IF NOT EXISTS idx_questions_apiary ON questions (apiary_id)')
@@ -68,7 +67,7 @@ class QuestionModel:
                 '''
                 INSERT INTO questions 
                 (apiary_id, external_id, question_text, question_type, category, is_required, display_order, 
-                min_value, max_value, options, depends_on, is_active)
+                 min_value, max_value, options, depends_on, is_active)
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 RETURNING id
                 ''',
@@ -99,28 +98,22 @@ class QuestionModel:
             SELECT * 
             FROM questions 
             WHERE apiary_id = %s 
-                {}
+            {}
             ORDER BY display_order
         '''.format("AND is_active = TRUE" if active_only else "")
-        params = (apiary_id,)
-        return QuestionModel._execute_query(db, query, params)
+        return QuestionModel._execute_query(db, query, (apiary_id,))
 
     @staticmethod
     def update(db, question_id, **kwargs):
         if not kwargs:
             raise ValueError("No fields to update")
 
-        # Explicitly handle options serialization
         if 'options' in kwargs:
             options_data = kwargs.pop('options')
-            if options_data is not None:
-                kwargs['options'] = json.dumps(options_data)
-            else:
-                kwargs['options'] = None
+            kwargs['options'] = json.dumps(options_data) if options_data else None
 
-        kwargs.pop('id', None) # Prevent changing the ID
-        
-        # Filter out keys that are not columns in the table to be safe
+        kwargs.pop('id', None)
+
         valid_fields = [
             'external_id', 'question_text', 'question_type', 'category', 
             'is_required', 'display_order', 'min_value', 'max_value', 
@@ -154,13 +147,14 @@ class QuestionModel:
     @staticmethod
     def reorder(db, apiary_id, new_order):
         order_data = [(order, qid) for order, qid in enumerate(new_order, 1)]
-        query = """
+        case_statements = "\n".join([f"WHEN %s THEN %s" for _ in order_data])
+        query = f"""
             UPDATE questions
             SET display_order = CASE id
-                {}
+                {case_statements}
             END
             WHERE apiary_id = %s AND id IN %s
-        """.format("\n".join([f"WHEN %s THEN %s" for _ in order_data]))
+        """
         params = [item for pair in order_data for item in (pair[1], pair[0])]
         params.extend([apiary_id, tuple(new_order)])
         QuestionModel._execute_update(db, query, params)
@@ -169,13 +163,15 @@ class QuestionModel:
     def get_by_external_id(db, apiary_id, external_id):
         results = QuestionModel._execute_query(
             db,
-            '''SELECT * FROM questions WHERE apiary_id = %s AND external_id = %s''',
+            'SELECT * FROM questions WHERE apiary_id = %s AND external_id = %s',
             (apiary_id, external_id)
         )
         return results[0] if results else None
 
     @staticmethod
-    def insert_or_update_default_question(db, apiary_id, external_id, question_text, question_type, category, is_required, display_order, min_value, max_value, options, depends_on, is_active):
+    def insert_or_update_default_question(db, apiary_id, external_id, question_text, question_type,
+                                          category, is_required, display_order, min_value,
+                                          max_value, options, depends_on, is_active):
         existing_question = QuestionModel.get_by_external_id(db, apiary_id, external_id)
         if existing_question:
             update_fields = {
@@ -186,7 +182,7 @@ class QuestionModel:
                 'display_order': display_order,
                 'min_value': min_value,
                 'max_value': max_value,
-                'options': json.dumps(options) if options else None,
+                'options': options,
                 'depends_on': depends_on,
                 'is_active': is_active
             }

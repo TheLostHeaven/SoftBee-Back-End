@@ -1,3 +1,6 @@
+import psycopg2
+import psycopg2.extras
+
 class InventoryModel:
     @staticmethod
     def init_db(db):

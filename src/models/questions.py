@@ -7,24 +7,24 @@ class QuestionModel:
         cursor = db.cursor()
         try:
             cursor.execute('''
-                CREATE TABLE IF NOT EXISTS questions (
-                    id SERIAL PRIMARY KEY,
-                    apiary_id INTEGER NOT NULL,
-                    external_id TEXT,
-                    question_text TEXT NOT NULL,
-                    question_type TEXT NOT NULL CHECK (question_type IN ('texto', 'numero', 'opciones', 'rango')),
-                    category VARCHAR(100),
-                    is_required BOOLEAN NOT NULL DEFAULT FALSE,
-                    display_order INTEGER NOT NULL,
-                    min_value INTEGER,
-                    max_value INTEGER,
-                    options JSONB,
-                    depends_on TEXT,
-                    is_active BOOLEAN NOT NULL DEFAULT TRUE,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    FOREIGN KEY (apiary_id) REFERENCES apiaries(id) ON DELETE CASCADE
-                )
+            CREATE TABLE IF NOT EXISTS questions (
+                id SERIAL PRIMARY KEY,
+                apiary_id INTEGER NOT NULL,
+                external_id TEXT,
+                question_text TEXT NOT NULL,
+                question_type TEXT NOT NULL CHECK (question_type IN ('texto', 'numero', 'opciones', 'rango')),
+                category VARCHAR(100),
+                is_required BOOLEAN NOT NULL DEFAULT FALSE,
+                display_order INTEGER NOT NULL,
+                min_value INTEGER,
+                max_value INTEGER,
+                options JSONB,
+                depends_on TEXT,
+                is_active BOOLEAN NOT NULL DEFAULT TRUE,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (apiary_id) REFERENCES apiaries(id) ON DELETE CASCADE
+            )
             ''')
             cursor.execute('CREATE INDEX IF NOT EXISTS idx_questions_apiary ON questions (apiary_id)')
             db.commit()

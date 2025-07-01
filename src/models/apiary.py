@@ -3,8 +3,9 @@ import sqlite3
 class ApiaryModel:
     @staticmethod
     def init_db(db):
+        cursor = db.cursor()
         try:
-            db.execute('''
+            cursor.execute('''
                 CREATE TABLE IF NOT EXISTS apiaries (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     user_id INTEGER NOT NULL,

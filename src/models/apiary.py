@@ -7,7 +7,7 @@ class ApiaryModel:
         try:
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS apiaries (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    id SERIAL PRIMARY KEY,
                     user_id INTEGER NOT NULL,
                     name TEXT NOT NULL,
                     location TEXT,

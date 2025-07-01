@@ -148,3 +148,4 @@ class InventoryModel:
             (amount, item_id)
         )
         cursor.close()
+

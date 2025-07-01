@@ -1,9 +1,9 @@
-from ..models.hive import BeehiveModel
+from src.models.hive import HiveModel
 
 class HiveController:
     def __init__(self, db):
         self.db = db
-        self.model = BeehiveModel
+        self.model = HiveModel
     
     def create_hive(self, apiary_id, hive_number, **kwargs):
         if self.model.get_hive_number(self.db, apiary_id, hive_number):

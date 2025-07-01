@@ -16,7 +16,7 @@ class ApiaryModel:
                     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
                 )
             ''')
-            db.execute('CREATE INDEX IF NOT EXISTS idx_apiaries_user_id ON apiaries(user_id)')
+            cursor.execute('CREATE INDEX IF NOT EXISTS idx_apiaries_user_id ON apiaries(user_id)')
             db.commit()
         except sqlite3.Error as e:
             db.rollback()

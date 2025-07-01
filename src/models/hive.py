@@ -1,7 +1,7 @@
 import psycopg2
 import psycopg2.extras
 
-class BeehiveModel:
+class HiveModel:
     @staticmethod
     def init_db(db):
         cursor = db.cursor()
@@ -82,7 +82,7 @@ class BeehiveModel:
         query = f"INSERT INTO hives ({', '.join(fields)}) VALUES ({', '.join(placeholders)}) RETURNING id"
         cursor = None
         try:
-            cursor = BeehiveModel._execute_update(db, query, values)
+            cursor = HiveModel._execute_update(db, query, values)
             hive_id = cursor.fetchone()[0]
             return hive_id
         finally:
@@ -92,7 +92,7 @@ class BeehiveModel:
     @staticmethod
     def get_by_id(db, hive_id):
         try:
-            result = BeehiveModel._execute_query(db, 'SELECT * FROM hives WHERE id = %s', (hive_id,))
+            result = HiveModel._execute_query(db, 'SELECT * FROM hives WHERE id = %s', (hive_id,))
             return dict(result[0]) if result else None
         except Exception as e:
             raise e
@@ -100,7 +100,7 @@ class BeehiveModel:
     @staticmethod
     def get_by_apiary(db, apiary_id):
         try:
-            result = BeehiveModel._execute_query(db, 'SELECT * FROM hives WHERE apiary_id = %s ORDER BY hive_number', (apiary_id,))
+            result = HiveModel._execute_query(db, 'SELECT * FROM hives WHERE apiary_id = %s ORDER BY hive_number', (apiary_id,))
             return [dict(row) for row in result]
         except Exception as e:
             raise e
@@ -120,7 +120,7 @@ class BeehiveModel:
         query = f"UPDATE hives SET {', '.join(fields)}, updated_at = CURRENT_TIMESTAMP WHERE id = %s"
         cursor = None
         try:
-            cursor = BeehiveModel._execute_update(db, query, params)
+            cursor = HiveModel._execute_update(db, query, params)
         finally:
             if cursor:
                 cursor.close()
@@ -129,7 +129,7 @@ class BeehiveModel:
     def delete(db, hive_id):
         cursor = None
         try:
-            cursor = BeehiveModel._execute_update(db, 'DELETE FROM hives WHERE id = %s', (hive_id,))
+            cursor = HiveModel._execute_update(db, 'DELETE FROM hives WHERE id = %s', (hive_id,))
         finally:
             if cursor:
                 cursor.close()
@@ -137,7 +137,7 @@ class BeehiveModel:
     @staticmethod
     def get_hive_number(db, apiary_id, hive_number):
         try:
-            result = BeehiveModel._execute_query(
+            result = HiveModel._execute_query(
                 db,
                 'SELECT * FROM hives WHERE apiary_id = %s AND hive_number = %s',
                 (apiary_id, hive_number))

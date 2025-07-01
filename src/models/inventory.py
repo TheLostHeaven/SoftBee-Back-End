@@ -58,12 +58,10 @@ class InventoryModel:
     def get_by_user(db, user_id):
         return InventoryModel._execute_query(
             db,
-            '''
-            SELECT i.* FROM inventory i
-            JOIN apiaries a ON i.apiary_id = a.id
-            WHERE a.user_id = %s
-            ORDER BY i.apiary_id, i.id
-            ''',
+            '''SELECT i.* FROM inventory i
+               JOIN apiaries a ON i.apiary_id = a.id
+               WHERE a.user_id = %s
+               ORDER BY i.apiary_id, i.id''',
             (user_id,)
         )
 
@@ -87,10 +85,8 @@ class InventoryModel:
     def create(db, apiary_id, item_name, quantity=0, unit='unit'):
         cursor = InventoryModel._execute_update(
             db,
-            '''
-            INSERT INTO inventory (apiary_id, item_name, quantity, unit)
-            VALUES (%s, %s, %s, %s) RETURNING id
-            ''',
+            '''INSERT INTO inventory (apiary_id, item_name, quantity, unit) 
+               VALUES (%s, %s, %s, %s) RETURNING id''',
             (apiary_id, item_name, quantity, unit)
         )
         item_id = cursor.fetchone()[0]
@@ -116,11 +112,7 @@ class InventoryModel:
             raise ValueError("No fields to update")
 
         params.append(item_id)
-        query = f'''
-            UPDATE inventory
-            SET {', '.join(fields)}, updated_at = CURRENT_TIMESTAMP
-            WHERE id = %s
-        '''
+        query = f"UPDATE inventory SET {', '.join(fields)}, updated_at = CURRENT_TIMESTAMP WHERE id = %s"
         InventoryModel._execute_update(db, query, params)
 
     @staticmethod
@@ -145,10 +137,7 @@ class InventoryModel:
     def get_by_name(db, apiary_id, item_name):
         return InventoryModel._execute_query(
             db,
-            '''
-            SELECT * FROM inventory
-            WHERE apiary_id = %s AND item_name ILIKE %s
-            ''',
+            'SELECT * FROM inventory WHERE apiary_id = %s AND item_name ILIKE %s',
             (apiary_id, f"%{item_name}%")
         )
 
@@ -156,11 +145,9 @@ class InventoryModel:
     def adjust_quantity(db, item_id, amount):
         cursor = InventoryModel._execute_update(
             db,
-            '''
-            UPDATE inventory
-            SET quantity = quantity + %s, updated_at = CURRENT_TIMESTAMP
-            WHERE id = %s
-            ''',
+            '''UPDATE inventory 
+               SET quantity = quantity + %s, updated_at = CURRENT_TIMESTAMP 
+               WHERE id = %s''',
             (amount, item_id)
         )
         cursor.close()

@@ -3,6 +3,7 @@ from ..controllers.questions import QuestionController
 from src.database.db import get_db
 import json
 import os
+import traceback  # <- para mostrar errores completos
 
 def create_question_routes():
     question_bp = Blueprint('question_routes', __name__)
@@ -13,7 +14,6 @@ def create_question_routes():
         db = get_db()
         controller = QuestionController(db)
 
-        # Ruta al archivo JSON
         config_path = os.path.join(current_app.root_path, 'config', 'preguntas_config.json')
         if not os.path.exists(config_path):
             return jsonify({'error': 'Archivo de configuración no encontrado'}), 404
@@ -34,35 +34,32 @@ def create_question_routes():
                 if not external_id:
                     continue
 
-                # Verificar si ya existe la pregunta
                 existing = QuestionModel.get_by_external_id(db, apiary_id, external_id)
                 if existing:
                     continue
 
-                # Campos mapeados
                 question_text = pregunta_data.get('pregunta')
                 question_type = pregunta_data.get('tipo')
                 category = pregunta_data.get('categoria')
                 is_required = pregunta_data.get('obligatoria', False)
                 display_order = i + 1
-                depends_on = pregunta_data.get('depende_de')  # puede ser None
+                depends_on = pregunta_data.get('depende_de')
 
-                # Validación y transformación de opciones
+                # Validación y limpieza de opciones
                 opciones = pregunta_data.get('opciones')
                 if question_type == 'opciones':
                     if not opciones or not isinstance(opciones, list):
                         raise ValueError(f"❌ Opciones inválidas en '{external_id}'")
-                    # Asegurar que sean strings
                     opciones = [str(op) for op in opciones]
 
-                # Validación para preguntas tipo "numero"
+                # Validación para tipo número
                 min_value = pregunta_data.get("min")
                 max_value = pregunta_data.get("max")
                 if question_type == 'numero':
                     if min_value is None or max_value is None:
                         raise ValueError(f"❌ Pregunta '{external_id}' tipo número necesita min y max")
 
-                # Crear la pregunta
+                # Crear pregunta
                 question_id = controller.create_question(
                     apiary_id=apiary_id,
                     external_id=external_id,
@@ -85,14 +82,17 @@ def create_question_routes():
             }), 200
 
         except ValueError as ve:
+            print("❌ ValueError en carga de preguntas:", ve)
+            traceback.print_exc()
             return jsonify({'error': str(ve), 'type': 'ValueError'}), 400
-        except Exception as e:
-            return jsonify({'error': str(e), 'type': 'Exception'}), 500
 
+        except Exception as e:
+            print("❌ Error inesperado en carga de preguntas:")
+            traceback.print_exc()
+            return jsonify({'error': str(e), 'type': 'Exception'}), 500
 
     @question_bp.route('/questions', methods=['POST'])
     def create_question():
-        """Crea una nueva pregunta personalizada"""
         db = get_db()
         controller = QuestionController(db)
         data = request.get_json()
@@ -120,11 +120,11 @@ def create_question_routes():
         except ValueError as ve:
             return jsonify({'error': str(ve), 'type': 'ValueError'}), 400
         except Exception as e:
+            traceback.print_exc()
             return jsonify({'error': str(e), 'type': 'Exception'}), 400
 
     @question_bp.route('/questions/<int:question_id>', methods=['GET'])
     def get_question(question_id):
-        """Obtiene una pregunta por su ID"""
         db = get_db()
         controller = QuestionController(db)
         question = controller.get_question(question_id)
@@ -134,7 +134,6 @@ def create_question_routes():
 
     @question_bp.route('/apiaries/<int:apiary_id>/questions', methods=['GET'])
     def get_apiary_questions(apiary_id):
-        """Obtiene todas las preguntas de un apiario"""
         db = get_db()
         controller = QuestionController(db)
         active_only = request.args.get('active_only', 'true').lower() == 'true'
@@ -143,7 +142,6 @@ def create_question_routes():
 
     @question_bp.route('/questions/<int:question_id>', methods=['PUT'])
     def update_question(question_id):
-        """Actualiza una pregunta existente"""
         db = get_db()
         controller = QuestionController(db)
         data = request.get_json()
@@ -151,22 +149,22 @@ def create_question_routes():
             controller.update_question(question_id, **data)
             return jsonify({'message': 'Pregunta actualizada'}), 200
         except Exception as e:
+            traceback.print_exc()
             return jsonify({'error': str(e)}), 400
 
     @question_bp.route('/questions/<int:question_id>', methods=['DELETE'])
     def delete_question(question_id):
-        """Elimina una pregunta"""
         db = get_db()
         controller = QuestionController(db)
         try:
             controller.delete_question(question_id)
             return jsonify({'message': 'Pregunta eliminada'}), 200
         except Exception as e:
+            traceback.print_exc()
             return jsonify({'error': str(e)}), 400
 
     @question_bp.route('/apiaries/<int:apiary_id>/questions/reorder', methods=['PUT'])
     def reorder_questions(apiary_id):
-        """Reordena las preguntas de un apiario"""
         db = get_db()
         controller = QuestionController(db)
         data = request.get_json()
@@ -176,11 +174,11 @@ def create_question_routes():
             controller.reorder_questions(apiary_id, data['order'])
             return jsonify({'message': 'Orden de preguntas actualizado'}), 200
         except Exception as e:
+            traceback.print_exc()
             return jsonify({'error': str(e)}), 400
 
     @question_bp.route('/questions/bank', methods=['GET'])
     def get_question_bank():
-        """Devuelve el banco de preguntas predeterminadas desde el archivo JSON"""
         try:
             config_path = os.path.join(current_app.root_path, 'config', 'preguntas_config.json')
             if not os.path.exists(config_path):
@@ -188,9 +186,10 @@ def create_question_routes():
 
             with open(config_path, 'r', encoding='utf-8') as f:
                 config = json.load(f)
-            
+
             return jsonify(config['preguntas']), 200
         except Exception as e:
+            traceback.print_exc()
             return jsonify({'error': str(e)}), 500
 
     return question_bp

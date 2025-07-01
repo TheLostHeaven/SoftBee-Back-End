@@ -12,8 +12,8 @@ def create_question_routes():
         """Carga preguntas predeterminadas desde un archivo JSON"""
         db = get_db()
         controller = QuestionController(db)
-        
-        # Ruta al archivo de configuración
+
+        # Ruta al archivo JSON
         config_path = os.path.join(current_app.root_path, 'config', 'preguntas_config.json')
         if not os.path.exists(config_path):
             return jsonify({'error': 'Archivo de configuración no encontrado'}), 404
@@ -21,38 +21,74 @@ def create_question_routes():
         try:
             with open(config_path, 'r', encoding='utf-8') as f:
                 config = json.load(f)
-            
+
+            preguntas = config.get("preguntas", [])
+            if not isinstance(preguntas, list):
+                return jsonify({'error': 'Formato inválido en el archivo JSON'}), 400
+
             preguntas_cargadas = []
             from src.models.questions import QuestionModel
-            for i, pregunta_data in enumerate(config['preguntas']):
-                # Verificar si la pregunta ya existe para este apiario
-                existing_question = QuestionModel.get_by_external_id(db, apiary_id, pregunta_data['id'])
-                if existing_question:
-                    continue  # Si ya existe, no la volvemos a crear
 
-                # Crear la pregunta si no existe
+            for i, pregunta_data in enumerate(preguntas):
+                external_id = pregunta_data.get('id')
+                if not external_id:
+                    continue
+
+                # Verificar si ya existe la pregunta
+                existing = QuestionModel.get_by_external_id(db, apiary_id, external_id)
+                if existing:
+                    continue
+
+                # Campos mapeados
+                question_text = pregunta_data.get('pregunta')
+                question_type = pregunta_data.get('tipo')
+                category = pregunta_data.get('categoria')
+                is_required = pregunta_data.get('obligatoria', False)
+                display_order = i + 1
+                depends_on = pregunta_data.get('depende_de')  # puede ser None
+
+                # Validación y transformación de opciones
+                opciones = pregunta_data.get('opciones')
+                if question_type == 'opciones':
+                    if not opciones or not isinstance(opciones, list):
+                        raise ValueError(f"❌ Opciones inválidas en '{external_id}'")
+                    # Asegurar que sean strings
+                    opciones = [str(op) for op in opciones]
+
+                # Validación para preguntas tipo "numero"
+                min_value = pregunta_data.get("min")
+                max_value = pregunta_data.get("max")
+                if question_type == 'numero':
+                    if min_value is None or max_value is None:
+                        raise ValueError(f"❌ Pregunta '{external_id}' tipo número necesita min y max")
+
+                # Crear la pregunta
                 question_id = controller.create_question(
                     apiary_id=apiary_id,
-                    external_id=pregunta_data['id'],
-                    question_text=pregunta_data['pregunta'],
-                    question_type=pregunta_data['tipo'],
-                    category=pregunta_data.get('categoria'),
-                    is_required=pregunta_data['obligatoria'],
-                    display_order=i + 1,
-                    min_value=pregunta_data.get('min'),
-                    max_value=pregunta_data.get('max'),
-                    options=pregunta_data.get('opciones'),
-                    depends_on=None,
+                    external_id=external_id,
+                    question_text=question_text,
+                    question_type=question_type,
+                    category=category,
+                    is_required=is_required,
+                    display_order=display_order,
+                    min_value=min_value,
+                    max_value=max_value,
+                    options=opciones,
+                    depends_on=depends_on,
                     is_active=True
                 )
                 preguntas_cargadas.append(question_id)
-            
+
             return jsonify({
                 'message': f'Se cargaron {len(preguntas_cargadas)} preguntas por defecto',
                 'question_ids': preguntas_cargadas
             }), 200
+
+        except ValueError as ve:
+            return jsonify({'error': str(ve), 'type': 'ValueError'}), 400
         except Exception as e:
-            return jsonify({'error': str(e)}), 500
+            return jsonify({'error': str(e), 'type': 'Exception'}), 500
+
 
     @question_bp.route('/questions', methods=['POST'])
     def create_question():

@@ -1,11 +1,13 @@
 from flask import Blueprint, request, jsonify
 from ..controllers.inventory import InventoryController
 from src.database.db import get_db
+from src.middleware.jwt import jwt_required
 
 def create_inventory_routes():
     inventory_bp = Blueprint('inventory_routes', __name__)
 
     @inventory_bp.route('/apiaries/<int:apiary_id>/inventory', methods=['POST'])
+    @jwt_required
     def create_item(apiary_id):
         db = get_db()
         controller = InventoryController(db)
@@ -26,6 +28,7 @@ def create_inventory_routes():
             return jsonify({'error': str(e)}), 400
 
     @inventory_bp.route('/inventory/<int:item_id>', methods=['GET'])
+    @jwt_required
     def get_item(item_id):
         db = get_db()
         controller = InventoryController(db)
@@ -35,6 +38,7 @@ def create_inventory_routes():
         return jsonify(item), 200
 
     @inventory_bp.route('/apiaries/<int:apiary_id>/inventory', methods=['GET'])
+    @jwt_required
     def get_apiary_items(apiary_id):
         db = get_db()
         controller = InventoryController(db)
@@ -48,6 +52,7 @@ def create_inventory_routes():
 
 
     @inventory_bp.route('/inventory/<int:item_id>', methods=['PUT'])
+    @jwt_required
     def update_item(item_id):
         db = get_db()
         controller = InventoryController(db)
@@ -62,6 +67,7 @@ def create_inventory_routes():
             return jsonify({'error': str(e)}), 400
 
     @inventory_bp.route('/inventory/<int:item_id>', methods=['DELETE'])
+    @jwt_required
     def delete_item(item_id):
         db = get_db()
         controller = InventoryController(db)
@@ -72,6 +78,7 @@ def create_inventory_routes():
             return jsonify({'error': str(e)}), 400
 
     @inventory_bp.route('/apiaries/<int:apiary_id>/inventory/delete_by_name', methods=['DELETE'])
+    @jwt_required
     def delete_by_name(apiary_id):
         db = get_db()
         controller = InventoryController(db)
@@ -86,6 +93,7 @@ def create_inventory_routes():
             return jsonify({'error': str(e)}), 400
 
     @inventory_bp.route('/apiaries/<int:apiary_id>/inventory/search', methods=['GET'])
+    @jwt_required
     def search_items(apiary_id):
         db = get_db()
         controller = InventoryController(db)
@@ -96,6 +104,7 @@ def create_inventory_routes():
         return jsonify(items), 200
 
     @inventory_bp.route('/inventory/<int:item_id>/adjust', methods=['PUT'])
+    @jwt_required   
     def adjust_quantity(item_id):
         db = get_db()
         controller = InventoryController(db)

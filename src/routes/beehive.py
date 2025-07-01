@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify
-from ..controllers.beehive import HiveController
+from src.controllers.beehive import HiveController
 from src.database.db import get_db
 
 def create_hive_routes():

@@ -47,7 +47,7 @@ def init_app(app):
         from src.models.users import UserModel
         from src.models.password_reset_tokens import PasswordResetTokenModel
         from src.models.apiary import ApiaryModel
-        from src.models.beehive import BeehiveModel
+        from src.models.hive import HiveModel
         # from src.models.inspection import InspectionModel
         from src.models.apiary_access import ApiaryAccessModel
         from src.models.questions import QuestionModel
@@ -61,7 +61,7 @@ def init_app(app):
         ApiaryModel.init_db(db)
         QuestionModel.init_db(db)
         InventoryModel.init_db(db)
-        BeehiveModel.init_db(db)
+        HiveModel.init_db(db)
         # InspectionModel.init_db(db)
         ApiaryAccessModel.init_db(db)
         PasswordResetTokenModel.init_db(db)

@@ -15,7 +15,7 @@ class BeehiveModel:
                     bee_population TEXT CHECK(bee_population IN ('Baja', 'Media', 'Alta')),
                     food_frames INTEGER,
                     brood_frames INTEGER,
-                    hive_status TEXT CHECK(hive_status IN (
+                    beehive_status TEXT CHECK(hive_status IN (
                         'Cámara de cría',
                         'Cámara de cría y producción',
                         'Cámara de cría y doble alza de producción'

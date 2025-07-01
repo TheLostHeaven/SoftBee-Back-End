@@ -20,7 +20,7 @@ def create_app(testing=False):
     app.json_provider_class = CustomJSONProvider
     app.config.from_object(Config)
 
-    CORS(app)
+    CORS(app, resources={r"/api/*": {"origins": "*"}})
 
     file_handler = FileHandler()
     file_handler.init_app(app)

@@ -81,8 +81,10 @@ def create_question_routes():
                 external_id=data.get('external_id')
             )
             return jsonify({'id': question_id}), 201
+        except ValueError as ve:
+            return jsonify({'error': str(ve), 'type': 'ValueError'}), 400
         except Exception as e:
-            return jsonify({'error': str(e)}), 400
+            return jsonify({'error': str(e), 'type': 'Exception'}), 400
 
     @question_bp.route('/questions/<int:question_id>', methods=['GET'])
     def get_question(question_id):

@@ -1,4 +1,4 @@
-from ..models.beehive import BeehiveModel
+from ..models.hive import BeehiveModel
 
 class HiveController:
     def __init__(self, db):

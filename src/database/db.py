@@ -47,7 +47,7 @@ def init_app(app):
         from src.models.users import UserModel
         from src.models.password_reset_tokens import PasswordResetTokenModel
         from src.models.apiary import ApiaryModel
-        from src.models.beehive import BeehiveModel
+        from models.hive import BeehiveModel
         # from src.models.inspection import InspectionModel
         from src.models.apiary_access import ApiaryAccessModel
         from src.models.questions import QuestionModel

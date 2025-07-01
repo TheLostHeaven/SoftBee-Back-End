@@ -1,48 +1,213 @@
 from flask import Blueprint, request, jsonify, current_app
 from src.models.users import UserModel
 from src.database.db import get_db
-from werkzeug.security import generate_password_hash, check_password_hash
 from src.middleware.jwt import generate_token
+from src.controllers.auth import AuthController
+from src.utils.email_service import EmailService
+from src.models.apiary import ApiaryModel
 import sqlite3
+import bcrypt
 
-def create_auth_routes():
+def create_auth_routes(get_db_func, email_service):
     auth_bp = Blueprint('auth_routes', __name__)
+    
+    # Usar get_db_func en lugar de get_db() directamente
+    auth_controller = AuthController(db=get_db_func(), mail_service=email_service)
 
-    # Register
+    def clean_user_input(data):
+        """Limpia y normaliza los datos de entrada de manera segura"""
+        if not data or not isinstance(data, dict):
+            raise ValueError("Invalid input data")
+        
+        cleaned = {}
+        errors = []
+        
+        # Procesar cada campo con validación individual
+        for field in ['nombre', 'username', 'email', 'phone', 'password']:
+            value = data.get(field)
+            
+            # Limpiar y convertir a string
+            if value is None:
+                cleaned_value = ''
+            elif isinstance(value, (int, float, bool)):
+                cleaned_value = str(value)
+            else:
+                cleaned_value = str(value).strip()
+            
+            cleaned[field] = cleaned_value
+            
+            # Validaciones específicas
+            if field == 'username' and not cleaned_value:
+                errors.append('Username is required')
+            if field == 'password' and not cleaned_value:
+                errors.append('Password is required')
+            if field == 'email' and not cleaned_value:
+                errors.append('Email is required')
+        
+        # Convertir a minúsculas
+        if cleaned['username']:
+            cleaned['username'] = cleaned['username'].lower()
+        if cleaned['email']:
+            cleaned['email'] = cleaned['email'].lower()
+        
+        if errors:
+            raise ValueError(" | ".join(errors))
+        
+        return cleaned
+    
+    def get_user_with_profile(user):
+        """Añade la URL de la foto de perfil al objeto de usuario"""
+        if not user:
+            return None
+                
+    # Limpiar datos sensibles
+        user.pop('password', None)
+        user.pop('reset_token', None)
+        user.pop('reset_token_expiry', None)
+                
+    # Obtener URL de la foto de perfil
+        file_handler = current_app.file_handler
+        user['profile_picture_url'] = file_handler.get_profile_picture_url(
+            user.get('profile_picture', 'default_profile.jpg')
+        )
+                
+        return user
+
+# Register
     @auth_bp.route('/register', methods=['POST'])
     def auth_register():
         try:
+            if not request.is_json:
+                return jsonify({'error': 'Content-Type must be application/json'}), 400
+                
             data = request.get_json()
-            db = get_db()
+            current_app.logger.debug(f"Raw JSON data: {data}")
+            db = get_db_func()
             
-            if UserModel.get_by_username(db, data['username']):
-                return jsonify({'error': 'Username already exists'}), 400
-            if UserModel.get_by_email(db, data['email']):
-                return jsonify({'error': 'Email already exists'}), 400
+            # Limpia y valida los datos del usuario
+            try:
+                cleaned_data = clean_user_input(data)
+                current_app.logger.debug(f"Cleaned user data: {cleaned_data}")
+                    
+            except ValueError as ve:
+                current_app.logger.warning(f"Validation error: {str(ve)}")
+                return jsonify({'error': str(ve)}), 400
             
+            # Validación de longitud de contraseña
+            if len(cleaned_data['password']) < 8:
+                return jsonify({'error': 'Password must be at least 8 characters'}), 400
+
+            # Validar apiarios
+            apiarios = data.get('apiarios', [])
+            if not apiarios or not isinstance(apiarios, list) or len(apiarios) == 0:
+                return jsonify({'error': 'At least one apiary is required'}), 400
+
+            # Crear usuario
+            hashed_password = bcrypt.hashpw(cleaned_data['password'].encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
             user_id = UserModel.create(
                 db,
-                nombre=data['nombre'],
-                username=data['username'],
-                email=data['email'],
-                phone=data['phone'],
-                password=generate_password_hash(data['password'])
+                nombre=cleaned_data['nombre'],
+                username=cleaned_data['username'],
+                email=cleaned_data['email'],
+                phone=cleaned_data['phone'],
+                password=hashed_password,
+                profile_picture=data.get('profile_picture')
             )
+
+            if not user_id:
+                current_app.logger.error('User creation returned invalid ID')
+                return jsonify({'error': 'User creation failed'}), 500
             
+            # Crear apiarios asociados
+            created_apiaries = []
+            try:
+                for apiario in apiarios:
+                    # Validar campos mínimos
+                    if 'apiary_name' not in apiario or not apiario['apiary_name'].strip():
+                        raise ValueError("Apiary name is required")
+                    
+                    # Procesar campos
+                    apiary_name = apiario['apiary_name'].strip()
+                    location = apiario.get('location', 'Ubicación no especificada').strip()
+                    
+                    # Convertir beehives_count
+                    try:
+                        beehives_count = int(apiario.get('beehives_count', 0))
+                    except (TypeError, ValueError):
+                        beehives_count = 0
+                    
+                    # Convertir treatments a booleano
+                    treatments = apiario.get('treatments', False)
+                    if isinstance(treatments, str):
+                        treatments = treatments.lower() in ['true', '1', 'yes', 'verdadero']
+                    else:
+                        treatments = bool(treatments)
+                    
+                    # Crear apiario
+                    apiary_id = ApiaryModel.create(
+                        db,
+                        user_id=user_id,
+                        name=apiary_name,
+                        location=location,
+                        beehives_count=beehives_count,
+                        treatments=treatments
+                    )
+                    
+                    if not apiary_id or apiary_id <= 0:
+                        current_app.logger.error(f'Apiary creation failed for: {apiary_name}')
+                        continue
+                    
+                    created_apiaries.append({
+                        'id': apiary_id,
+                        'name': apiary_name,
+                        'location': location
+                    })
+                    
+                    current_app.logger.debug(f"Apiary created: ID {apiary_id} - {apiary_name}")
+                
+                if len(created_apiaries) == 0:
+                    raise RuntimeError("No apiaries were created successfully")
+                    
+            except Exception as apiary_error:
+                current_app.logger.error(f"Apiary creation error: {str(apiary_error)}")
+                UserModel.delete(db, user_id)
+                return jsonify({'error': 'Failed to create apiaries', 'details': str(apiary_error)}), 500
+
+            # Obtener usuario creado
             user_data = UserModel.get_by_id(db, user_id)
+            if not user_data:
+                current_app.logger.error(f'User not found after creation, ID: {user_id}')
+                return jsonify({'error': 'User retrieval failed'}), 500
             
-            token = generate_token(user_id, user_data)
+            # Añadir URL de la foto de perfil
+            user_data = get_user_with_profile(user_data)
+            
+            token = generate_token(user_id, {
+                'username': cleaned_data['username'],
+                'email': cleaned_data['email'],
+                'profile_picture_url': user_data['profile_picture_url']
+            })
             
             return jsonify({
                 'token': token,
                 'user_id': user_id,
+                'username': cleaned_data['username'],
+                'email': cleaned_data['email'],
+                'profile_picture_url': user_data['profile_picture_url'],
+                'apiaries': created_apiaries,
                 'message': 'Registration successful'
             }), 201
 
+        except ValueError as ve:
+            return jsonify({'error': str(ve)}), 400
+        except sqlite3.Error as dbe:
+            current_app.logger.error(f'Database error: {str(dbe)}')
+            return jsonify({'error': 'Database operation failed'}), 500
         except Exception as err:
-            return jsonify({'error': str(err)}), 500
+            current_app.logger.error(f'Unexpected error: {str(err)}', exc_info=True)
+            return jsonify({'error': 'Internal server error'}), 500
 
-    # Login
+
     @auth_bp.route('/login', methods=['POST'])
     def auth_login():
         try:
@@ -50,62 +215,149 @@ def create_auth_routes():
                 return jsonify({'error': 'Content-Type must be application/json'}), 400
 
             data = request.get_json()
+            db = get_db_func()
 
-            if 'password' not in data:
-                return jsonify({
-                    'error': 'Password is required',
-                    'received': list(data.keys())
-                }), 400
+            # Limpieza y validación básica
+            identifier = data.get('username', data.get('email', '')).strip().lower()
+            password = data.get('password', '').strip()
 
-            if 'username' not in data and 'email' not in data:
-                return jsonify({
-                    'error': 'Either username or email is required',
-                    'received': list(data.keys())
-                }), 400
+            if not password:
+                return jsonify({'error': 'Password is required'}), 400
+                
+            if not identifier:
+                return jsonify({'error': 'Username or email is required'}), 400
 
-            db = get_db()
-            password = data['password']
-
+            # Buscar usuario
             user = None
-            if 'username' in data and data['username']:
-                user = UserModel.get_by_username(db, data['username'].strip())
-            elif 'email' in data and data['email']:
-                user = UserModel.get_by_email(db, data['email'].strip())
+            if '@' in identifier:
+                user = UserModel.get_by_email(db, identifier)
+            else:
+                user = UserModel.get_by_username(db, identifier)
 
             if not user:
+                current_app.logger.warning(f'Login attempt for non-existent user: {identifier}')
                 return jsonify({
                     'error': 'Invalid credentials',
                     'message': 'User not found with provided credentials'
                 }), 401
 
-            if not check_password_hash(user['password'], password):
+            stored_password = user['password']
+            current_app.logger.debug(f"Stored password: {stored_password!r}")
+            current_app.logger.debug(f"Stored password length: {len(stored_password)}")
+            password_match = False
+            try:
+                # Solo bcrypt
+                if stored_password and (stored_password.startswith('$2b$') or stored_password.startswith('$2a$')):
+                    password_match = bcrypt.checkpw(password.encode('utf-8'), stored_password.encode('utf-8'))
+                else:
+                    password_match = False
+            except Exception as e:
+                current_app.logger.error(f"Error en verificación: {str(e)}")
+                password_match = False
+            current_app.logger.debug(f'Password check result: {password_match}')
+            
+            if not password_match:
+                current_app.logger.warning(f'Failed login attempt for user: {user["username"]}')
                 return jsonify({
                     'error': 'Invalid credentials',
                     'message': 'Incorrect password'
                 }), 401
 
+            # Obtener URL de la foto de perfil
+            user = get_user_with_profile(user)
+            
+            # Generar token
             token = generate_token(
                 user_id=user['id'],
                 user_data={
                     'username': user['username'],
-                    'email': user['email']
+                    'email': user['email'],
+                    'profile_picture_url': user['profile_picture_url']
                 }
             )
 
-            response_data = {
+            return jsonify({
                 'token': token,
                 'user_id': user['id'],
                 'username': user['username'],
                 'email': user['email'],
+                'profile_picture_url': user['profile_picture_url'],
                 'message': 'Login successful'
-            }
-
-            return jsonify(response_data), 200
+            }), 200
 
         except sqlite3.Error as db_error:
             current_app.logger.error(f'Database error: {str(db_error)}')
             return jsonify({'error': 'Database operation failed'}), 500
         except Exception as e:
-            current_app.logger.error(f'Unexpected error: {str(e)}')
+            current_app.logger.error(f'Unexpected error: {str(e)}', exc_info=True)
             return jsonify({'error': 'Internal server error'}), 500
+        
+    # Forgot Password    
+    @auth_bp.route('/forgot-password', methods=['POST'])
+    def forgot_password():
+        try:
+            # Obtener conexión de base de datos
+            db = get_db_func()
+            
+            # Crear controlador con la conexión
+            auth_controller = AuthController(db=db, mail_service=email_service)
+            
+            data = request.get_json()
+            email = data.get('email', '').strip().lower()
+            
+            if not email:
+                return jsonify({'error': 'Email is required'}), 400
+            
+            # Ejecutar operación
+            auth_controller.initiate_password_reset(email)
+            
+            # Obtener usuario para incluir foto en el correo
+            user = UserModel.get_by_email(db, email)
+            if user:
+                # Obtener URL de la foto de perfil
+                file_handler = current_app.file_handler
+                profile_picture_url = file_handler.get_profile_picture_url(
+                    user.get('profile_picture', 'default_profile.jpg')
+                )
+                
+                # Si el servicio de correo admite foto, enviarla
+                if hasattr(email_service, 'set_profile_picture_url'):
+                    email_service.set_profile_picture_url(profile_picture_url)
+            
+            db.commit()
+            
+            return jsonify({
+                'message': 'Si el email está registrado, recibirás un correo'
+            }), 200
+            
+        except Exception as e:
+            db.rollback()
+            current_app.logger.error(f'Error en forgot_password: {str(e)}')
+            return jsonify({'error': 'Error al procesar la solicitud'}), 500
+
+    @auth_bp.route('/reset-password', methods=['POST'])
+    def reset_password():
+        try:
+            data = request.get_json()
+            token = data.get('token', '').strip()
+            new_password = data.get('new_password', '').strip()
+            
+            if not token or not new_password:
+                return jsonify({'error': 'Token y nueva contraseña son requeridos'}), 400
+                
+            if len(new_password) < 8:
+                return jsonify({'error': 'La contraseña debe tener al menos 8 caracteres'}), 400
+                
+            # Usar el controlador con la conexión actual
+            db = get_db_func()
+            auth_controller = AuthController(db=db, mail_service=email_service)
+            
+            if auth_controller.complete_password_reset(token, new_password):
+                return jsonify({'message': 'Contraseña actualizada exitosamente'}), 200
+            else:
+                return jsonify({'error': 'Token inválido o expirado'}), 400
+        except Exception as e:
+            current_app.logger.error(f"Error en reset_password: {str(e)}")
+            return jsonify({'error': 'Error interno del servidor'}), 500
+
     return auth_bp

@@ -1,0 +1,85 @@
+{
+  "preguntas": [
+    {
+      "id": "estado_general",
+      "categoria": "Estado de la Colmena",
+      "pregunta": "¿Cuál es el estado general de la colmena?",
+      "tipo": "opciones",
+      "obligatoria": true,
+      "opciones": ["Excelente", "Bueno", "Regular", "Malo"]
+    },
+    {
+      "id": "poblacion",
+      "categoria": "Estado de la Colmena",
+      "pregunta": "Nivel de población",
+      "tipo": "opciones",
+      "obligatoria": true,
+      "opciones": ["Alta", "Media", "Baja"]
+    },
+    {
+      "id": "comportamiento",
+      "categoria": "Estado de la Colmena",
+      "pregunta": "Comportamiento de las abejas",
+      "tipo": "opciones",
+      "obligatoria": true,
+      "opciones": ["Dócil", "Nervioso", "Agresivo"]
+    },
+    {
+      "id": "cantidad_cria",
+      "categoria": "Producción",
+      "pregunta": "Cantidad de cuadros de cría",
+      "tipo": "numero",
+      "obligatoria": true,
+      "min": 0,
+      "max": 20
+    },
+    {
+      "id": "cantidad_miel",
+      "categoria": "Producción",
+      "pregunta": "Cantidad de cuadros de miel",
+      "tipo": "numero",
+      "obligatoria": true,
+      "min": 0,
+      "max": 20
+    },
+    {
+      "id": "presencia_reina",
+      "categoria": "Salud",
+      "pregunta": "¿Se observó a la reina?",
+      "tipo": "opciones",
+      "obligatoria": true,
+      "opciones": ["Sí", "No"]
+    },
+    {
+      "id": "celdas_reales",
+      "categoria": "Salud",
+      "pregunta": "¿Presencia de celdas reales?",
+      "tipo": "opciones",
+      "obligatoria": true,
+      "opciones": ["Sí", "No"]
+    },
+    {
+      "id": "enfermedades",
+      "categoria": "Salud",
+      "pregunta": "¿Signos de enfermedades (Loque, Varroa, etc.)?",
+      "tipo": "texto",
+      "obligatoria": false
+    },
+    {
+      "id": "necesita_alimentacion",
+      "categoria": "Alimentación",
+      "pregunta": "¿Necesita alimentación suplementaria?",
+      "tipo": "opciones",
+      "obligatoria": true,
+      "opciones": ["Sí", "No"]
+    },
+    {
+      "id": "espacio_disponible",
+      "categoria": "Mantenimiento",
+      "pregunta": "¿Necesita más espacio (alzas)?",
+      "tipo": "opciones",
+      "obligatoria": true,
+      "opciones": ["Sí", "No"]
+    }
+  ]
+}

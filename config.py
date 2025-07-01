@@ -1,22 +1,25 @@
 from dotenv import load_dotenv
-import os 
+import os
 
 load_dotenv()
 
 DATABASE_DIR = os.path.abspath(os.path.dirname(__file__))
 
-class Config():
-    DATABASE = os.path.join(DATABASE_DIR, 'database.db')
-    debug = True
+class Config:
+    DEBUG = True
+    
+    MAIL_SERVER = os.getenv("SMTP_HOST", "smtp.gmail.com")
+    MAIL_PORT = int(os.getenv("SMTP_PORT", 587))
+    MAIL_USERNAME = os.getenv("SMTP_USER")
+    MAIL_PASSWORD = os.getenv("SMTP_PASSWORD")
+    MAIL_USE_TLS = True
+    MAIL_DEFAULT_SENDER = os.getenv("SMTP_USER")
 
+    FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
 
-smtpHost = os.environ["SMTP_HOST"]
-smtpPort = int(os.environ["SMTP_PORT"])
-smtpUser = os.environ["SMTP_USER"]
-smtpPassword = os.environ["SMTP_PASSWORD"]
-front_end_url = os.environ["FRONTEND_URL"]
-secretKey = os.environ["SECRET_KEY"]
-algorithm = os.environ["ALGORITHM"]
-expiresTokenEmail = int(os.environ["EXPIRES_TOKEN_EMAIL"])
-expiresTokenSession = int(os.environ["EXPIRES_TOKEN_SESSION"]) 
-jwtKey = os.environ["JWT_KEY"]
+    JWT_SECRET_KEY = os.getenv("JWT_KEY", "secret-key-default")
+    JWT_ALGORITHM = os.getenv("ALGORITHM", "HS256")
+    JWT_ACCESS_TOKEN_EXPIRES = int(os.getenv("EXPIRES_TOKEN_SESSION", 1440))  # 24 horas
+    JWT_RESET_TOKEN_EXPIRES = int(os.getenv("EXPIRES_TOKEN_EMAIL", 30))  # 30 minutos
+    DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///instance/database.db")
+    BASE_URL = os.getenv("BASE_URL", "http://localhost:5000")

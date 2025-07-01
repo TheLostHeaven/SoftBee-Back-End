@@ -1,4 +1,4 @@
-from werkzeug.security import generate_password_hash, check_password_hash
+import bcrypt
 from datetime import datetime, timedelta
 import secrets
 from ..models.users import UserModel
@@ -8,10 +8,10 @@ class UserController:
         self.db = db
         self.model = UserModel
 
-    def create_user(self, nombre, username, email, phone, password):
-        """Creates a new user with hashed password"""
-        hashed_password = generate_password_hash(password)
-        return self.model.create(self.db, nombre, username, email, phone, hashed_password)
+    def create_user(self, nombre, username, email, phone, password, profile_picture=None):
+        """Creates a new user with hashed password using bcrypt"""
+        hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+        return self.model.create(self.db, nombre, username, email, phone, hashed_password, profile_picture)
 
 
     def get_user(self, user_id):
@@ -25,11 +25,14 @@ class UserController:
     def update_user(self, user_id, **kwargs):
         """Updates user information"""
         if 'password' in kwargs:
-            kwargs['password'] = generate_password_hash(kwargs['password'])
+            kwargs['password'] = bcrypt.hashpw(kwargs['password'].encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
         self.model.update(self.db, user_id, **kwargs)
 
     def delete_user(self, user_id):
         """Deletes a user"""
         self.model.delete(self.db, user_id)
 
+    def update_profile_picture(self, user_id, filename):
+        """Updates user's profile picture"""
+        self.model.update_profile_picture(self.db, user_id, filename)
 

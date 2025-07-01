@@ -1,95 +1,195 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, current_app
 from ..controllers.questions import QuestionController
 from src.database.db import get_db
+import json
+import os
+import traceback  # <- para mostrar errores completos
 
 def create_question_routes():
     question_bp = Blueprint('question_routes', __name__)
+
+    @question_bp.route('/questions/load_defaults/<int:apiary_id>', methods=['POST'])
+    def load_default_questions(apiary_id):
+        """Carga preguntas predeterminadas desde un archivo JSON"""
+        db = get_db()
+        controller = QuestionController(db)
+
+        config_path = os.path.join(current_app.root_path, 'config', 'preguntas_config.json')
+        if not os.path.exists(config_path):
+            return jsonify({'error': 'Archivo de configuración no encontrado'}), 404
+
+        try:
+            with open(config_path, 'r', encoding='utf-8') as f:
+                config = json.load(f)
+
+            preguntas = config.get("preguntas", [])
+            if not isinstance(preguntas, list):
+                return jsonify({'error': 'Formato inválido en el archivo JSON'}), 400
+
+            preguntas_cargadas = []
+            from src.models.questions import QuestionModel
+
+            for i, pregunta_data in enumerate(preguntas):
+                external_id = pregunta_data.get('id')
+                if not external_id:
+                    continue
+
+                existing = QuestionModel.get_by_external_id(db, apiary_id, external_id)
+                if existing:
+                    continue
+
+                question_text = pregunta_data.get('pregunta')
+                question_type = pregunta_data.get('tipo')
+                category = pregunta_data.get('categoria')
+                is_required = pregunta_data.get('obligatoria', False)
+                display_order = i + 1
+                depends_on = pregunta_data.get('depende_de')
+
+                # Validación y limpieza de opciones
+                opciones = pregunta_data.get('opciones')
+                if question_type == 'opciones':
+                    if not opciones or not isinstance(opciones, list):
+                        raise ValueError(f"❌ Opciones inválidas en '{external_id}'")
+                    opciones = [str(op) for op in opciones]
+
+                # Validación para tipo número
+                min_value = pregunta_data.get("min")
+                max_value = pregunta_data.get("max")
+                if question_type == 'numero':
+                    if min_value is None or max_value is None:
+                        raise ValueError(f"❌ Pregunta '{external_id}' tipo número necesita min y max")
+
+                # Crear pregunta
+                question_id = controller.create_question(
+                    apiary_id=apiary_id,
+                    external_id=external_id,
+                    question_text=question_text,
+                    question_type=question_type,
+                    category=category,
+                    is_required=is_required,
+                    display_order=display_order,
+                    min_value=min_value,
+                    max_value=max_value,
+                    options=opciones,
+                    depends_on=depends_on,
+                    is_active=True
+                )
+                preguntas_cargadas.append(question_id)
+
+            return jsonify({
+                'message': f'Se cargaron {len(preguntas_cargadas)} preguntas por defecto',
+                'question_ids': preguntas_cargadas
+            }), 200
+
+        except ValueError as ve:
+            print("❌ ValueError en carga de preguntas:", ve)
+            traceback.print_exc()
+            return jsonify({'error': str(ve), 'type': 'ValueError'}), 400
+
+        except Exception as e:
+            print("❌ Error inesperado en carga de preguntas:")
+            traceback.print_exc()
+            return jsonify({'error': str(e), 'type': 'Exception'}), 500
 
     @question_bp.route('/questions', methods=['POST'])
     def create_question():
         db = get_db()
         controller = QuestionController(db)
-
         data = request.get_json()
-        required = ['apiary_id', 'question_id', 'question_text', 'question_type']
-        if not all(field in data for field in required):
-            return jsonify({'error': 'Missing required fields'}), 400
+
+        required_fields = ['apiary_id', 'question_text', 'question_type']
+        if not all(field in data for field in required_fields):
+            return jsonify({'error': 'Faltan campos requeridos'}), 400
 
         try:
             question_id = controller.create_question(
-                data['apiary_id'],
-                data['question_id'],
-                data['question_text'],
-                data['question_type'],
-                data.get('is_required', False),
-                data.get('display_order', 0),
-                data.get('min_value'),
-                data.get('max_value'),
-                data.get('options'),
-                data.get('depends_on'),
-                data.get('is_active', True)
+                apiary_id=data['apiary_id'],
+                question_text=data['question_text'],
+                question_type=data['question_type'],
+                category=data.get('category'),
+                is_required=data.get('is_required', False),
+                display_order=data.get('display_order', 0),
+                min_value=data.get('min_value'),
+                max_value=data.get('max_value'),
+                options=data.get('options'),
+                depends_on=data.get('depends_on'),
+                is_active=data.get('is_active', True),
+                external_id=data.get('external_id')
             )
             return jsonify({'id': question_id}), 201
+        except ValueError as ve:
+            return jsonify({'error': str(ve), 'type': 'ValueError'}), 400
         except Exception as e:
-            return jsonify({'error': str(e)}), 400
+            traceback.print_exc()
+            return jsonify({'error': str(e), 'type': 'Exception'}), 400
 
-    @question_bp.route('/questions/<question_id>', methods=['GET'])
+    @question_bp.route('/questions/<int:question_id>', methods=['GET'])
     def get_question(question_id):
         db = get_db()
         controller = QuestionController(db)
-
         question = controller.get_question(question_id)
-        if not question:
-            return jsonify({'error': 'Question not found'}), 404
-        return jsonify(question), 200
+        if question:
+            return jsonify(question), 200
+        return jsonify({'error': 'Pregunta no encontrada'}), 404
 
     @question_bp.route('/apiaries/<int:apiary_id>/questions', methods=['GET'])
     def get_apiary_questions(apiary_id):
         db = get_db()
         controller = QuestionController(db)
-
         active_only = request.args.get('active_only', 'true').lower() == 'true'
         questions = controller.get_apiary_questions(apiary_id, active_only)
         return jsonify(questions), 200
 
-    @question_bp.route('/questions/<question_id>', methods=['PUT'])
+    @question_bp.route('/questions/<int:question_id>', methods=['PUT'])
     def update_question(question_id):
         db = get_db()
         controller = QuestionController(db)
-
         data = request.get_json()
-        if not data:
-            return jsonify({'error': 'No data provided'}), 400
-
         try:
             controller.update_question(question_id, **data)
-            return jsonify({'message': 'Question updated'}), 200
+            return jsonify({'message': 'Pregunta actualizada'}), 200
         except Exception as e:
+            traceback.print_exc()
             return jsonify({'error': str(e)}), 400
 
-    @question_bp.route('/questions/<question_id>', methods=['DELETE'])
+    @question_bp.route('/questions/<int:question_id>', methods=['DELETE'])
     def delete_question(question_id):
         db = get_db()
         controller = QuestionController(db)
-
         try:
             controller.delete_question(question_id)
-            return jsonify({'message': 'Question deleted'}), 200
+            return jsonify({'message': 'Pregunta eliminada'}), 200
         except Exception as e:
+            traceback.print_exc()
             return jsonify({'error': str(e)}), 400
 
     @question_bp.route('/apiaries/<int:apiary_id>/questions/reorder', methods=['PUT'])
     def reorder_questions(apiary_id):
         db = get_db()
         controller = QuestionController(db)
-
-        if 'order' not in request.json or not isinstance(request.json['order'], list):
-            return jsonify({'error': 'Order list required'}), 400
-
+        data = request.get_json()
+        if 'order' not in data or not isinstance(data['order'], list):
+            return jsonify({'error': 'Se requiere una lista de IDs en "order"'}), 400
         try:
-            controller.reorder_questions(apiary_id, request.json['order'])
-            return jsonify({'message': 'Questions reordered'}), 200
+            controller.reorder_questions(apiary_id, data['order'])
+            return jsonify({'message': 'Orden de preguntas actualizado'}), 200
         except Exception as e:
+            traceback.print_exc()
             return jsonify({'error': str(e)}), 400
+
+    @question_bp.route('/questions/bank', methods=['GET'])
+    def get_question_bank():
+        try:
+            config_path = os.path.join(current_app.root_path, 'config', 'preguntas_config.json')
+            if not os.path.exists(config_path):
+                return jsonify({'error': 'Archivo de configuración del banco de preguntas no encontrado'}), 404
+
+            with open(config_path, 'r', encoding='utf-8') as f:
+                config = json.load(f)
+
+            return jsonify(config['preguntas']), 200
+        except Exception as e:
+            traceback.print_exc()
+            return jsonify({'error': str(e)}), 500
 
     return question_bp

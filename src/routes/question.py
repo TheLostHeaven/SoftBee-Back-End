@@ -1,7 +1,7 @@
 from flask import Blueprint, request, jsonify, current_app
 from ..controllers.questions import QuestionController
 from src.database.db import get_db
-from src.models.hive import hiveModel
+from src.models.hive import HiveModel
 import json
 import os
 import traceback  # <- para mostrar errores completos
@@ -210,7 +210,7 @@ def create_question_routes():
         db = get_db()
         
         # Primero, obtén la colmena para saber a qué apiario pertenece
-        beehive = hiveModel.get_by_id(db, beehive_id)
+        beehive = HiveModel.get_by_id(db, beehive_id)
         if not beehive:
             return jsonify({'error': 'Colmena no encontrada'}), 404
         

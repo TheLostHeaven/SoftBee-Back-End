@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify, current_app
 from ..controllers.questions import QuestionController
-from src.database.db import get_db
+from ..database.db import get_db
 from ..models.beehive import BeehiveModel
 import json
 import os

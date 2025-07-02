@@ -34,9 +34,21 @@ def create_question_routes():
                 if not external_id:
                     continue
 
-                existing = QuestionModel.get_by_external_id(db, apiary_id, external_id)
-                if existing:
-                    continue
+                question_id = QuestionModel.insert_or_update_default_question(
+                    db,
+                    apiary_id=apiary_id,
+                    external_id=external_id,
+                    question_text=question_text,
+                    question_type=question_type,
+                    category=category,
+                    is_required=is_required,
+                    display_order=display_order,
+                    min_value=min_value,
+                    max_value=max_value,
+                    options=opciones,
+                    depends_on=depends_on,
+                    is_active=True
+                )
 
                 question_text = pregunta_data.get('pregunta')
                 question_type = pregunta_data.get('tipo')

@@ -1,6 +1,7 @@
 from flask import Blueprint, request, jsonify, current_app
 from ..controllers.questions import QuestionController
 from src.database.db import get_db
+from ..models.beehive import BeehiveModel
 import json
 import os
 import traceback  # <- para mostrar errores completos
@@ -188,6 +189,28 @@ def create_question_routes():
                 config = json.load(f)
 
             return jsonify(config['preguntas']), 200
+        except Exception as e:
+            traceback.print_exc()
+            return jsonify({'error': str(e)}), 500
+
+    @question_bp.route('/beehives/<int:beehive_id>/questions', methods=['GET'])
+    def get_beehive_questions(beehive_id):
+        db = get_db()
+        
+        # Primero, obtén la colmena para saber a qué apiario pertenece
+        beehive = BeehiveModel.get_by_id(db, beehive_id)
+        if not beehive:
+            return jsonify({'error': 'Colmena no encontrada'}), 404
+        
+        apiary_id = beehive['apiary_id']
+        
+        # Ahora, obtén las preguntas del apiario
+        controller = QuestionController(db)
+        active_only = request.args.get('active_only', 'true').lower() == 'true'
+        
+        try:
+            questions = controller.get_apiary_questions(apiary_id, active_only)
+            return jsonify(questions), 200
         except Exception as e:
             traceback.print_exc()
             return jsonify({'error': str(e)}), 500

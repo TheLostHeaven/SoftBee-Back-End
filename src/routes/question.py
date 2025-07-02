@@ -1,10 +1,10 @@
 from flask import Blueprint, request, jsonify, current_app
 from ..controllers.questions import QuestionController
 from src.database.db import get_db
-from src.models.hive import hiveModel
+from ..models.beehive import BeehiveModel
 import json
 import os
-import traceback
+import traceback  # <- para mostrar errores completos
 
 def create_question_routes():
     question_bp = Blueprint('question_routes', __name__)
@@ -35,30 +35,33 @@ def create_question_routes():
                 if not external_id:
                     continue
 
-                # Moví estas líneas para que estén antes de usarlas
+                existing = QuestionModel.get_by_external_id(db, apiary_id, external_id)
+                if existing:
+                    continue
+
                 question_text = pregunta_data.get('pregunta')
                 question_type = pregunta_data.get('tipo')
                 category = pregunta_data.get('categoria')
                 is_required = pregunta_data.get('obligatoria', False)
                 display_order = i + 1
                 depends_on = pregunta_data.get('depende_de')
-                min_value = pregunta_data.get("min")
-                max_value = pregunta_data.get("max")
-                opciones = pregunta_data.get('opciones')
 
                 # Validación y limpieza de opciones
+                opciones = pregunta_data.get('opciones')
                 if question_type == 'opciones':
                     if not opciones or not isinstance(opciones, list):
                         raise ValueError(f"❌ Opciones inválidas en '{external_id}'")
                     opciones = [str(op) for op in opciones]
 
                 # Validación para tipo número
+                min_value = pregunta_data.get("min")
+                max_value = pregunta_data.get("max")
                 if question_type == 'numero':
                     if min_value is None or max_value is None:
                         raise ValueError(f"❌ Pregunta '{external_id}' tipo número necesita min y max")
 
-                question_id = QuestionModel.insert_or_update_default_question(
-                    db,
+                # Crear pregunta
+                question_id = controller.create_question(
                     apiary_id=apiary_id,
                     external_id=external_id,
                     question_text=question_text,
@@ -83,24 +86,25 @@ def create_question_routes():
             print("❌ ValueError en carga de preguntas:", ve)
             traceback.print_exc()
             return jsonify({'error': str(ve), 'type': 'ValueError'}), 400
+
         except Exception as e:
             print("❌ Error inesperado en carga de preguntas:")
             traceback.print_exc()
             return jsonify({'error': str(e), 'type': 'Exception'}), 500
 
-    @question_bp.route('/apiaries/<int:apiary_id>/questions', methods=['POST'])
-    def create_question(apiary_id):
+    @question_bp.route('/questions', methods=['POST'])
+    def create_question():
         db = get_db()
         controller = QuestionController(db)
         data = request.get_json()
 
-        required_fields = ['question_text', 'question_type']
+        required_fields = ['apiary_id', 'question_text', 'question_type']
         if not all(field in data for field in required_fields):
             return jsonify({'error': 'Faltan campos requeridos'}), 400
 
         try:
             question_id = controller.create_question(
-                apiary_id=apiary_id,
+                apiary_id=data['apiary_id'],
                 question_text=data['question_text'],
                 question_type=data['question_type'],
                 category=data.get('category'),
@@ -167,11 +171,8 @@ def create_question_routes():
         data = request.get_json()
         if 'order' not in data or not isinstance(data['order'], list):
             return jsonify({'error': 'Se requiere una lista de IDs en "order"'}), 400
-        
         try:
-            # Convertir a enteros si es necesario
-            order_ids = [int(id) for id in data['order']]
-            controller.reorder_questions(apiary_id, order_ids)
+            controller.reorder_questions(apiary_id, data['order'])
             return jsonify({'message': 'Orden de preguntas actualizado'}), 200
         except Exception as e:
             traceback.print_exc()
@@ -195,11 +196,15 @@ def create_question_routes():
     @question_bp.route('/beehives/<int:beehive_id>/questions', methods=['GET'])
     def get_beehive_questions(beehive_id):
         db = get_db()
-        beehive = hiveModel.get_by_id(db, beehive_id)
+        
+        # Primero, obtén la colmena para saber a qué apiario pertenece
+        beehive = BeehiveModel.get_by_id(db, beehive_id)
         if not beehive:
             return jsonify({'error': 'Colmena no encontrada'}), 404
         
         apiary_id = beehive['apiary_id']
+        
+        # Ahora, obtén las preguntas del apiario
         controller = QuestionController(db)
         active_only = request.args.get('active_only', 'true').lower() == 'true'
         

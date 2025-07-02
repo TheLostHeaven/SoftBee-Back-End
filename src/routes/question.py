@@ -1,7 +1,7 @@
 from flask import Blueprint, request, jsonify, current_app
 from ..controllers.questions import QuestionController
 from ..database.db import get_db
-from ..models.hive import BeehiveModel
+from ..models.hive import HiveModel as BeehiveModel
 import json
 import os
 import traceback  # <- para mostrar errores completos

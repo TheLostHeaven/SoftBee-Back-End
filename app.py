@@ -48,5 +48,6 @@ def create_app(testing=False):
     app.register_blueprint(create_inventory_routes(), url_prefix='/api')
     app.register_blueprint(create_question_routes(), url_prefix='/api')
     app.register_blueprint(create_user_routes(), url_prefix='/api')
+    app.register_blueprint(create_reports_routes(), url_prefix='/api')
 
     return app

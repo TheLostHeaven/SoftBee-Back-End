@@ -22,7 +22,7 @@ def create_app(testing=False):
 
     CORS(app, resources={r"/*": {"origins": ["http://localhost:63547", "https://softbee-back-end.onrender.com", "null"]}})
 
-    file_handler = FileHandler(app)
+    file_handler = FileHandler()
     file_handler.init_app(app)
     app.file_handler = file_handler
 

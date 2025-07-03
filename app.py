@@ -6,12 +6,12 @@ from src.utils.file_handler import FileHandler
 from src.database.db import get_db
 from config import Config
 from datetime import datetime
-from flask.json.provider import DefaultJSONProvider 
+from flask.json.provider import DefaultJSONProvider
 
 class CustomJSONProvider(DefaultJSONProvider):
     def default(self, obj):
         if isinstance(obj, datetime):
-            return obj.strftime('%Y-%m-%dT%H:%M:%S')
+            return obj.isoformat()
         return super().default(obj)
 
 def create_app(testing=False):
@@ -20,9 +20,9 @@ def create_app(testing=False):
     app.json_provider_class = CustomJSONProvider
     app.config.from_object(Config)
 
-    CORS(app, resources={r"/api/*": {"origins": "*"}})
+    CORS(app, resources={r"/*": {"origins": ["http://localhost:63547", "https://softbee-back-end.onrender.com", "null"]}})
 
-    file_handler = FileHandler()
+    file_handler = FileHandler(app)
     file_handler.init_app(app)
     app.file_handler = file_handler
 

@@ -36,7 +36,7 @@ def create_app(testing=False):
     from src.routes.users import create_user_routes
     from src.routes.auth import create_auth_routes
     from src.routes.reports import create_reports_routes
-    from src.routes.monitoreo_routes import create_monitoreo_routes
+    from src.routes.monitoreo import create_monitoreo_routes
 
     mail = Mail(app)
     email_service = EmailService(mail)

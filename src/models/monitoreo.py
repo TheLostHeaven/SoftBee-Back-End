@@ -209,6 +209,43 @@ class MonitoreoModel:
             cursor.close()
 
     @staticmethod
+    def get_all_with_details(db, user_id, limit=100, offset=0):
+        """Obtiene todos los monitoreos de un usuario con detalles para reportes."""
+        cursor = db.cursor()
+        try:
+            cursor.execute('''
+                SELECT 
+                    m.id as monitoreo_id,
+                    m.fecha,
+                    a.id as apiario_id,
+                    a.name as apiario_nombre,
+                    h.id as colmena_id,
+                    h.hive_number
+                FROM monitoreos m
+                JOIN apiaries a ON m.apiary_id = a.id
+                JOIN beehives h ON m.beehive_id = h.id
+                WHERE a.user_id = %s
+                ORDER BY m.fecha DESC
+                LIMIT %s OFFSET %s
+            ''', (user_id, limit, offset))
+            
+            monitoreos = MonitoreoModel._rows_to_dicts(cursor)
+            
+            # Para cada monitoreo, obtener sus respuestas
+            for monitoreo in monitoreos:
+                cursor.execute('''
+                    SELECT pregunta_texto, respuesta, tipo_respuesta
+                    FROM respuestas_monitoreo
+                    WHERE monitoreo_id = %s
+                    ORDER BY id
+                ''', (monitoreo['monitoreo_id'],))
+                monitoreo['respuestas'] = MonitoreoModel._rows_to_dicts(cursor)
+            
+            return monitoreos
+        finally:
+            cursor.close()
+
+    @staticmethod
     def update(db, monitoreo_id, **kwargs):
         """Actualiza un monitoreo en PostgreSQL"""
         if not kwargs:

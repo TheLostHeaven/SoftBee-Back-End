@@ -15,7 +15,7 @@ class CustomJSONProvider(DefaultJSONProvider):
         return super().default(obj)
 
 def create_app(testing=False):
-    app = Flask(_name_, instance_relative_config=True)
+    app = Flask(__name__, instance_relative_config=True)
 
     app.json_provider_class = CustomJSONProvider
     app.config.from_object(Config)

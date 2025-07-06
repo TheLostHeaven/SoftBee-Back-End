@@ -10,7 +10,7 @@ class InspectionModel:
                     question_id INTEGER NOT NULL,
                     respuesta TEXT NOT NULL,
                     fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    FOREIGN KEY (beehive_id) REFERENCES beehive(id) ON DELETE CASCADE,
+                    FOREIGN KEY (beehive_id) REFERENCES hives(id) ON DELETE CASCADE,
                     FOREIGN KEY (question_id) REFERENCES question(id) ON DELETE CASCADE,
                     UNIQUE(beehive_id, question_id, fecha)
                 )

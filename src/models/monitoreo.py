@@ -209,6 +209,55 @@ class MonitoreoModel:
             cursor.close()
 
     @staticmethod
+    def get_all_with_details(db, user_id, limit=100, offset=0):
+        """Obtiene todos los monitoreos para un usuario con detalles completos."""
+        cursor = db.cursor()
+        try:
+            # Obtener monitoreos principales para el usuario
+            cursor.execute('''
+                SELECT m.id, m.beehive_id, m.apiary_id, m.fecha, m.sincronizado,
+                       a.name as apiario_nombre, h.hive_number
+                FROM monitoreos m
+                JOIN apiaries a ON m.apiary_id = a.id
+                JOIN beehives h ON m.beehive_id = h.id
+                WHERE a.user_id = %s
+                ORDER BY m.fecha DESC
+                LIMIT %s OFFSET %s
+            ''', (user_id, limit, offset))
+            
+            monitoreos = MonitoreoModel._rows_to_dicts(cursor)
+            
+            if not monitoreos:
+                return []
+
+            # Obtener todas las respuestas para los monitoreos recuperados
+            monitoreo_ids = [m['id'] for m in monitoreos]
+            cursor.execute('''
+                SELECT * FROM respuestas_monitoreo 
+                WHERE monitoreo_id = ANY(%s)
+                ORDER BY id
+            ''', (monitoreo_ids,))
+            
+            respuestas_all = MonitoreoModel._rows_to_dicts(cursor)
+            
+            # Agrupar respuestas por monitoreo_id
+            respuestas_map = {}
+            for respuesta in respuestas_all:
+                mon_id = respuesta['monitoreo_id']
+                if mon_id not in respuestas_map:
+                    respuestas_map[mon_id] = []
+                respuestas_map[mon_id].append(respuesta)
+
+            # Asignar respuestas a cada monitoreo
+            for monitoreo in monitoreos:
+                monitoreo['respuestas'] = respuestas_map.get(monitoreo['id'], [])
+            
+            return monitoreos
+            
+        finally:
+            cursor.close()
+
+    @staticmethod
     def update(db, monitoreo_id, **kwargs):
         """Actualiza un monitoreo en PostgreSQL"""
         if not kwargs:

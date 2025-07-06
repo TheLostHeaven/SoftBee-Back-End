@@ -20,7 +20,7 @@ def create_app(testing=False):
     app.json_provider_class = CustomJSONProvider
     app.config.from_object(Config)
 
-    CORS(app, resources={r"/api/*": {"origins": "*"}})
+    CORS(app)
 
     file_handler = FileHandler()
     file_handler.init_app(app)
@@ -35,6 +35,7 @@ def create_app(testing=False):
     from src.routes.question import create_question_routes
     from src.routes.users import create_user_routes
     from src.routes.auth import create_auth_routes
+    from src.routes.monitoreo import create_monitoreo_routes
 
     mail = Mail(app)
     email_service = EmailService(mail)
@@ -48,5 +49,7 @@ def create_app(testing=False):
     app.register_blueprint(create_inventory_routes(), url_prefix='/api')
     app.register_blueprint(create_question_routes(), url_prefix='/api')
     app.register_blueprint(create_user_routes(), url_prefix='/api')
+    app.register_blueprint(create_monitoreo_routes(), url_prefix='/api')
+
 
     return app

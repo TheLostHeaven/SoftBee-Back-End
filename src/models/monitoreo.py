@@ -210,17 +210,13 @@ class MonitoreoModel:
 
     @staticmethod
     def get_all_with_details(db, user_id, limit=100, offset=0):
-        """Obtiene todos los monitoreos de un usuario con detalles para reportes."""
+        """Obtiene todos los monitoreos para un usuario con detalles completos."""
         cursor = db.cursor()
         try:
+            # Obtener monitoreos principales para el usuario
             cursor.execute('''
-                SELECT 
-                    m.id as monitoreo_id,
-                    m.fecha,
-                    a.id as apiario_id,
-                    a.name as apiario_nombre,
-                    h.id as colmena_id,
-                    h.hive_number
+                SELECT m.id, m.beehive_id, m.apiary_id, m.fecha, m.sincronizado,
+                       a.name as apiario_nombre, h.hive_number
                 FROM monitoreos m
                 JOIN apiaries a ON m.apiary_id = a.id
                 JOIN beehives h ON m.beehive_id = h.id
@@ -231,17 +227,33 @@ class MonitoreoModel:
             
             monitoreos = MonitoreoModel._rows_to_dicts(cursor)
             
-            # Para cada monitoreo, obtener sus respuestas
+            if not monitoreos:
+                return []
+
+            # Obtener todas las respuestas para los monitoreos recuperados
+            monitoreo_ids = [m['id'] for m in monitoreos]
+            cursor.execute('''
+                SELECT * FROM respuestas_monitoreo 
+                WHERE monitoreo_id = ANY(%s)
+                ORDER BY id
+            ''', (monitoreo_ids,))
+            
+            respuestas_all = MonitoreoModel._rows_to_dicts(cursor)
+            
+            # Agrupar respuestas por monitoreo_id
+            respuestas_map = {}
+            for respuesta in respuestas_all:
+                mon_id = respuesta['monitoreo_id']
+                if mon_id not in respuestas_map:
+                    respuestas_map[mon_id] = []
+                respuestas_map[mon_id].append(respuesta)
+
+            # Asignar respuestas a cada monitoreo
             for monitoreo in monitoreos:
-                cursor.execute('''
-                    SELECT pregunta_texto, respuesta, tipo_respuesta
-                    FROM respuestas_monitoreo
-                    WHERE monitoreo_id = %s
-                    ORDER BY id
-                ''', (monitoreo['monitoreo_id'],))
-                monitoreo['respuestas'] = MonitoreoModel._rows_to_dicts(cursor)
+                monitoreo['respuestas'] = respuestas_map.get(monitoreo['id'], [])
             
             return monitoreos
+            
         finally:
             cursor.close()
 

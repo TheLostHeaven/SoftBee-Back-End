@@ -2,6 +2,7 @@ from flask import Blueprint, request, jsonify
 from datetime import datetime 
 from src.controllers.monitoreo import MonitoreoController
 from src.database.db import get_db
+from src.middleware.jwt import jwt_required
 
 def create_monitoreo_routes():
     monitoreo_bp = Blueprint('monitoreo_routes', __name__)

@@ -2,9 +2,11 @@ from flask import Blueprint, jsonify, g
 from src.controllers.reports import ReportsController
 from src.database.db import get_db
 from src.middleware.jwt import jwt_required
+from flask_cors import CORS
 
 def create_reports_routes():
     reports_bp = Blueprint('reports_routes', __name__)
+    CORS(reports_bp, resources={r"/reports/monitoring": {"origins": "*"}})
 
     @reports_bp.route('/reports/monitoring', methods=['GET'])
     @jwt_required

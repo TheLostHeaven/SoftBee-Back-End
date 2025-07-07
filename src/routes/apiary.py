@@ -93,6 +93,23 @@ def create_apiary_routes():
             return jsonify({'message': 'Apiary deleted successfully'}), 200
         except Exception as e:
             return jsonify({'error': str(e)}), 500
+
+    @apiary_bp.route('/apiaries', methods=['GET'])
+    @jwt_required
+    def get_authenticated_user_apiaries():
+        db = get_db()
+        controller = ApiaryController(db)
+        user_id = g.current_user_id  # Obtenido desde el token
+
+        try:
+            user = UserModel.get_by_id(db, user_id)
+            if not user:
+                return jsonify({'error': 'Usuario no encontrado'}), 404
+
+            apiaries = controller.get_all_apiaries_for_user(user_id)
+            return jsonify(apiaries), 200
+        except Exception as e:
+            return jsonify({'error':str(e)}),500
         
     @apiary_bp.route('/health', methods=['GET'])
     def health_check():

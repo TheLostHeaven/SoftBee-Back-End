@@ -14,3 +14,4 @@ class ReportsController:
         except Exception as e:
             print(f"Error en ReportsController: {e}")
             raise e
+

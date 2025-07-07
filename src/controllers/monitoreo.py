@@ -64,7 +64,7 @@ class MonitoreoController:
         total_apiarios = cursor.fetchone()[0]
 
         # Total de colmenas para el usuario
-        cursor.execute("SELECT COUNT(*) FROM beehives WHERE apiary_id IN (SELECT id FROM apiaries WHERE user_id = %s)", (user_id,))
+        cursor.execute("SELECT COUNT(*) FROM hives WHERE apiary_id IN (SELECT id FROM apiaries WHERE user_id = %s)", (user_id,))
         total_colmenas = cursor.fetchone()[0]
 
         # Total de monitoreos para el usuario

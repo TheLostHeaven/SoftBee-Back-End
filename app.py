@@ -53,4 +53,5 @@ def create_app(testing=False):
     app.register_blueprint(create_monitoreo_routes(), url_prefix='/api')
     app.register_blueprint(create_reports_routes(), url_prefix='/api')
 
+
     return app

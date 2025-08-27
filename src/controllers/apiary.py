@@ -20,6 +20,10 @@ class ApiaryController:
             apiary['inventory'] = InventoryModel.get_all(self.db, apiary_id)
         return apiary
 
+    def get_by_id(self, apiary_id):
+        """Simple method to get apiary by ID without inventory"""
+        return self.model.get_by_id(self.db, apiary_id)
+
     def get_all_apiaries_for_user(self, user_id):
         # Solo retorna apiarios si el usuario existe
         user = UserModel.get_by_id(self.db, user_id)

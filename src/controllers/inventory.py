@@ -5,13 +5,17 @@ class InventoryController:
         self.db = db
         self.model = InventoryModel
 
-    def create_item(self, apiary_id, name, quantity=0, unit='unit'):
+    def create_item(self, apiary_id, name, quantity=0, unit='unit', description=None, minimum_stock=0):
         """Creates a new inventory item for an apiary"""
-        return self.model.create(self.db, apiary_id, name, quantity, unit)
+        return self.model.create(self.db, apiary_id, name, quantity, unit, description, minimum_stock)
 
     def get_item(self, item_id):
         """Gets inventory item by ID"""
         return self.model.get_by_id(self.db, item_id)
+
+    def get_item_with_apiary(self, item_id):
+        """Gets inventory item with apiary information"""
+        return self.model.get_item_with_apiary(self.db, item_id)
 
     def get_apiary_items(self, apiary_id):
         """Gets all inventory items for an apiary"""
@@ -40,3 +44,15 @@ class InventoryController:
     def get_user_inventory(self, user_id):
         """Gets all inventory items from all apiaries belonging to a user"""
         return self.model.get_by_user_id(self.db, user_id)
+
+    def get_low_stock_items(self, apiary_id):
+        """Gets items with low stock for an apiary"""
+        return self.model.get_low_stock_items(self.db, apiary_id)
+
+    def get_apiary_summary(self, apiary_id):
+        """Gets inventory summary for an apiary"""
+        return self.model.get_apiary_summary(self.db, apiary_id)
+
+    def validate_user_access(self, item_id, user_id):
+        """Validates that user has access to the inventory item through their apiary"""
+        return self.model.validate_apiary_access(self.db, item_id, user_id)

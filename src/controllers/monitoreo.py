@@ -88,10 +88,11 @@ class MonitoreoController:
 
             # Monitoreos del último mes para el usuario
             current_app.logger.debug("Executing monitoreos_mes query")
+            thirty_days_ago = datetime.utcnow() - timedelta(days=30)
             cursor.execute("""
                 SELECT COUNT(*) FROM monitoreos 
-                WHERE fecha >= CURRENT_DATE - INTERVAL '30 days' AND apiary_id IN (SELECT id FROM apiaries WHERE user_id = %s)
-            """, (user_id,))
+                WHERE fecha >= %s AND apiary_id IN (SELECT id FROM apiaries WHERE user_id = %s)
+            """, (thirty_days_ago, user_id,))
             monitoreos_mes = cursor.fetchone()[0]
             current_app.logger.debug(f"monitoreos_mes: {monitoreos_mes}")
 

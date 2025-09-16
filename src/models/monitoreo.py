@@ -1,5 +1,6 @@
 import json
 from datetime import datetime
+import psycopg2.extras
 
 class MonitoreoModel:
     @staticmethod
@@ -63,14 +64,6 @@ class MonitoreoModel:
             cursor.close()
 
     @staticmethod
-    def _rows_to_dicts(cursor):
-        """Convierte los resultados del cursor en diccionarios"""
-        if cursor.description is None:
-            return []
-        columns = [desc[0] for desc in cursor.description]
-        return [dict(zip(columns, row)) for row in cursor.fetchall()]
-
-    @staticmethod
     def create(db, beehive_id, apiary_id, fecha, respuestas=None, datos_adicionales=None):
         """Crea un nuevo monitoreo en PostgreSQL"""
         cursor = db.cursor()
@@ -118,7 +111,7 @@ class MonitoreoModel:
     @staticmethod
     def get_by_id(db, monitoreo_id):
         """Obtiene un monitoreo por ID con sus respuestas"""
-        cursor = db.cursor()
+        cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         try:
             # Obtener monitoreo principal
             cursor.execute('''
@@ -133,9 +126,7 @@ class MonitoreoModel:
             if not monitoreo:
                 return None
             
-            # Convertir a diccionario
-            columns = [desc[0] for desc in cursor.description]
-            monitoreo_dict = dict(zip(columns, monitoreo))
+            monitoreo_dict = dict(monitoreo)
             
             # Obtener respuestas
             cursor.execute('''
@@ -144,8 +135,8 @@ class MonitoreoModel:
                 ORDER BY id
             ''', (monitoreo_id,))
             
-            respuestas = MonitoreoModel._rows_to_dicts(cursor)
-            monitoreo_dict['respuestas'] = respuestas
+            respuestas = cursor.fetchall()
+            monitoreo_dict['respuestas'] = [dict(r) for r in respuestas]
             
             # Los datos JSONB se parsean automáticamente
             if monitoreo_dict.get('datos_json'):
@@ -159,7 +150,7 @@ class MonitoreoModel:
     @staticmethod
     def get_all(db, limit=100, offset=0):
         """Obtiene todos los monitoreos con paginación"""
-        cursor = db.cursor()
+        cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         try:
             cursor.execute('''
                 SELECT m.*, a.name as apiario_nombre, h.hive_number
@@ -170,14 +161,15 @@ class MonitoreoModel:
                 LIMIT %s OFFSET %s
             ''', (limit, offset))
             
-            return MonitoreoModel._rows_to_dicts(cursor)
+            rows = cursor.fetchall()
+            return [dict(row) for row in rows]
         finally:
             cursor.close()
 
     @staticmethod
     def get_by_apiario(db, apiary_id):
         """Obtiene monitoreos por apiario"""
-        cursor = db.cursor()
+        cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         try:
             cursor.execute('''
                 SELECT m.*, h.hive_number
@@ -187,14 +179,15 @@ class MonitoreoModel:
                 ORDER BY m.fecha DESC
             ''', (apiary_id,))
             
-            return MonitoreoModel._rows_to_dicts(cursor)
+            rows = cursor.fetchall()
+            return [dict(row) for row in rows]
         finally:
             cursor.close()
 
     @staticmethod
     def get_by_colmena(db, beehive_id):
         """Obtiene monitoreos por colmena"""
-        cursor = db.cursor()
+        cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         try:
             cursor.execute('''
                 SELECT m.*, a.name as apiario_nombre
@@ -204,14 +197,15 @@ class MonitoreoModel:
                 ORDER BY m.fecha DESC
             ''', (beehive_id,))
             
-            return MonitoreoModel._rows_to_dicts(cursor)
+            rows = cursor.fetchall()
+            return [dict(row) for row in rows]
         finally:
             cursor.close()
 
     @staticmethod
     def get_all_with_details(db, user_id, limit=100, offset=0):
         """Obtiene todos los monitoreos para un usuario con detalles completos."""
-        cursor = db.cursor()
+        cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         try:
             # Obtener monitoreos principales para el usuario
             cursor.execute('''
@@ -225,20 +219,21 @@ class MonitoreoModel:
                 LIMIT %s OFFSET %s
             ''', (user_id, limit, offset))
             
-            monitoreos = MonitoreoModel._rows_to_dicts(cursor)
-            
+            monitoreos = cursor.fetchall()
             if not monitoreos:
                 return []
 
-            # Obtener todas las respuestas para los monitoreos recuperados
+            monitoreos = [dict(m) for m in monitoreos]
             monitoreo_ids = [m['id'] for m in monitoreos]
+            
+            # Obtener todas las respuestas para los monitoreos recuperados
             cursor.execute('''
                 SELECT * FROM respuestas_monitoreo 
                 WHERE monitoreo_id = ANY(%s)
                 ORDER BY id
             ''', (monitoreo_ids,))
             
-            respuestas_all = MonitoreoModel._rows_to_dicts(cursor)
+            respuestas_all = cursor.fetchall()
             
             # Agrupar respuestas por monitoreo_id
             respuestas_map = {}
@@ -246,7 +241,7 @@ class MonitoreoModel:
                 mon_id = respuesta['monitoreo_id']
                 if mon_id not in respuestas_map:
                     respuestas_map[mon_id] = []
-                respuestas_map[mon_id].append(respuesta)
+                respuestas_map[mon_id].append(dict(respuesta))
 
             # Asignar respuestas a cada monitoreo
             for monitoreo in monitoreos:
@@ -330,7 +325,7 @@ class MonitoreoModel:
     @staticmethod
     def get_pending_sync(db):
         """Obtiene monitoreos pendientes de sincronización"""
-        cursor = db.cursor()
+        cursor = db.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
         try:
             cursor.execute('''
                 SELECT m.*, a.name as apiario_nombre, h.hive_number
@@ -341,6 +336,7 @@ class MonitoreoModel:
                 ORDER BY m.fecha ASC
             ''')
             
-            return MonitoreoModel._rows_to_dicts(cursor)
+            rows = cursor.fetchall()
+            return [dict(row) for row in rows]
         finally:
             cursor.close()

@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from src.models.monitoreo import MonitoreoModel
 from flask import current_app
 
@@ -99,12 +99,15 @@ class MonitoreoController:
             # Monitoreos por apiario para el usuario
             current_app.logger.debug("Executing monitoreos_por_apiario query")
             cursor.execute("""
-                SELECT a.name, COUNT(m.id) as total
-                FROM apiaries a
-                LEFT JOIN monitoreos m ON a.id = m.apiary_id
-                WHERE a.user_id = %s
-                GROUP BY a.id, a.name
-                ORDER BY total DESC
+                SELECT
+                    a.name,
+                    (SELECT COUNT(*) FROM monitoreos m WHERE m.apiary_id = a.id) as total
+                FROM
+                    apiaries a
+                WHERE
+                    a.user_id = %s
+                ORDER BY
+                    total DESC
             """, (user_id,))
             monitoreos_por_apiario = [
                 {'apiario': row[0], 'total': row[1]} 

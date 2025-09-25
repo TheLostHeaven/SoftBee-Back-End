@@ -1,4 +1,4 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, g
 from ..controllers.inventory import InventoryController
 from ..controllers.apiary import ApiaryController
 from src.database.db import get_db
@@ -9,14 +9,15 @@ def create_inventory_routes():
 
     @inventory_bp.route('/apiaries/<int:apiary_id>/inventory', methods=['POST'])
     @jwt_required
-    def create_item(apiary_id, current_user):
+    def create_item(apiary_id):
         db = get_db()
         inventory_controller = InventoryController(db)
         apiary_controller = ApiaryController(db)
+        user_id = g.current_user_id
         
         # Verificar que el usuario es propietario del apiario
         apiary = apiary_controller.get_by_id(apiary_id)
-        if not apiary or apiary['user_id'] != current_user['id']:
+        if not apiary or apiary['user_id'] != user_id:
             return jsonify({'error': 'Apiario no encontrado o acceso denegado'}), 404
 
         data = request.get_json()
@@ -40,12 +41,13 @@ def create_inventory_routes():
 
     @inventory_bp.route('/inventory/<int:item_id>', methods=['GET'])
     @jwt_required
-    def get_item(item_id, current_user):
+    def get_item(item_id):
         db = get_db()
         controller = InventoryController(db)
+        user_id = g.current_user_id
         
         # Verificar acceso del usuario al item
-        if not controller.validate_user_access(item_id, current_user['id']):
+        if not controller.validate_user_access(item_id, user_id):
             return jsonify({'error': 'Item no encontrado o acceso denegado'}), 404
             
         item = controller.get_item_with_apiary(item_id)
@@ -56,14 +58,15 @@ def create_inventory_routes():
 
     @inventory_bp.route('/apiaries/<int:apiary_id>/inventory', methods=['GET'])
     @jwt_required
-    def get_apiary_items(apiary_id, current_user):
+    def get_apiary_items(apiary_id):
         db = get_db()
         inventory_controller = InventoryController(db)
         apiary_controller = ApiaryController(db)
+        user_id = g.current_user_id
         
         # Verificar que el usuario es propietario del apiario
         apiary = apiary_controller.get_by_id(apiary_id)
-        if not apiary or apiary['user_id'] != current_user['id']:
+        if not apiary or apiary['user_id'] != user_id:
             return jsonify({'error': 'Apiario no encontrado o acceso denegado'}), 404
 
         items = inventory_controller.get_apiary_items(apiary_id)
@@ -71,22 +74,24 @@ def create_inventory_routes():
 
     @inventory_bp.route('/user/inventory', methods=['GET'])
     @jwt_required
-    def get_user_inventory(current_user):
+    def get_user_inventory():
         db = get_db()
         controller = InventoryController(db)
-        items = controller.get_user_inventory(current_user['id'])
+        user_id = g.current_user_id
+        items = controller.get_user_inventory(user_id)
         return jsonify(items), 200
 
     @inventory_bp.route('/apiaries/<int:apiary_id>/inventory/summary', methods=['GET'])
     @jwt_required
-    def get_apiary_summary(apiary_id, current_user):
+    def get_apiary_summary(apiary_id):
         db = get_db()
         inventory_controller = InventoryController(db)
         apiary_controller = ApiaryController(db)
+        user_id = g.current_user_id
         
         # Verificar que el usuario es propietario del apiario
         apiary = apiary_controller.get_by_id(apiary_id)
-        if not apiary or apiary['user_id'] != current_user['id']:
+        if not apiary or apiary['user_id'] != user_id:
             return jsonify({'error': 'Apiario no encontrado o acceso denegado'}), 404
 
         summary = inventory_controller.get_apiary_summary(apiary_id)
@@ -94,14 +99,15 @@ def create_inventory_routes():
 
     @inventory_bp.route('/apiaries/<int:apiary_id>/inventory/low-stock', methods=['GET'])
     @jwt_required
-    def get_low_stock_items(apiary_id, current_user):
+    def get_low_stock_items(apiary_id):
         db = get_db()
         inventory_controller = InventoryController(db)
         apiary_controller = ApiaryController(db)
+        user_id = g.current_user_id
         
         # Verificar que el usuario es propietario del apiario
         apiary = apiary_controller.get_by_id(apiary_id)
-        if not apiary or apiary['user_id'] != current_user['id']:
+        if not apiary or apiary['user_id'] != user_id:
             return jsonify({'error': 'Apiario no encontrado o acceso denegado'}), 404
 
         items = inventory_controller.get_low_stock_items(apiary_id)
@@ -110,12 +116,13 @@ def create_inventory_routes():
 
     @inventory_bp.route('/inventory/<int:item_id>', methods=['PUT'])
     @jwt_required
-    def update_item(item_id, current_user):
+    def update_item(item_id):
         db = get_db()
         controller = InventoryController(db)
+        user_id = g.current_user_id
         
         # Verificar acceso del usuario al item
-        if not controller.validate_user_access(item_id, current_user['id']):
+        if not controller.validate_user_access(item_id, user_id):
             return jsonify({'error': 'Item no encontrado o acceso denegado'}), 404
         
         data = request.get_json()
@@ -132,12 +139,13 @@ def create_inventory_routes():
 
     @inventory_bp.route('/inventory/<int:item_id>', methods=['DELETE'])
     @jwt_required
-    def delete_item(item_id, current_user):
+    def delete_item(item_id):
         db = get_db()
         controller = InventoryController(db)
+        user_id = g.current_user_id
         
         # Verificar acceso del usuario al item
-        if not controller.validate_user_access(item_id, current_user['id']):
+        if not controller.validate_user_access(item_id, user_id):
             return jsonify({'error': 'Item no encontrado o acceso denegado'}), 404
         
         try:
@@ -148,14 +156,15 @@ def create_inventory_routes():
 
     @inventory_bp.route('/apiaries/<int:apiary_id>/inventory/delete_by_name', methods=['DELETE'])
     @jwt_required
-    def delete_by_name(apiary_id, current_user):
+    def delete_by_name(apiary_id):
         db = get_db()
         inventory_controller = InventoryController(db)
         apiary_controller = ApiaryController(db)
+        user_id = g.current_user_id
         
         # Verificar que el usuario es propietario del apiario
         apiary = apiary_controller.get_by_id(apiary_id)
-        if not apiary or apiary['user_id'] != current_user['id']:
+        if not apiary or apiary['user_id'] != user_id:
             return jsonify({'error': 'Apiario no encontrado o acceso denegado'}), 404
 
         data = request.get_json()
@@ -170,14 +179,15 @@ def create_inventory_routes():
 
     @inventory_bp.route('/apiaries/<int:apiary_id>/inventory/search', methods=['GET'])
     @jwt_required
-    def search_items(apiary_id, current_user):
+    def search_items(apiary_id):
         db = get_db()
         inventory_controller = InventoryController(db)
         apiary_controller = ApiaryController(db)
+        user_id = g.current_user_id
         
         # Verificar que el usuario es propietario del apiario
         apiary = apiary_controller.get_by_id(apiary_id)
-        if not apiary or apiary['user_id'] != current_user['id']:
+        if not apiary or apiary['user_id'] != user_id:
             return jsonify({'error': 'Apiario no encontrado o acceso denegado'}), 404
 
         query = request.args.get('query')
@@ -189,12 +199,13 @@ def create_inventory_routes():
 
     @inventory_bp.route('/inventory/<int:item_id>/adjust', methods=['PUT'])
     @jwt_required   
-    def adjust_quantity(item_id, current_user):
+    def adjust_quantity(item_id):
         db = get_db()
         controller = InventoryController(db)
+        user_id = g.current_user_id
         
         # Verificar acceso del usuario al item
-        if not controller.validate_user_access(item_id, current_user['id']):
+        if not controller.validate_user_access(item_id, user_id):
             return jsonify({'error': 'Item no encontrado o acceso denegado'}), 404
         
         data = request.get_json()

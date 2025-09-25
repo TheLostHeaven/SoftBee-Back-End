@@ -227,13 +227,14 @@ class MonitoreoModel:
             monitoreo_ids = [m['id'] for m in monitoreos]
             
             # Obtener todas las respuestas para los monitoreos recuperados
-            cursor.execute('''
-                SELECT * FROM respuestas_monitoreo 
-                WHERE monitoreo_id = ANY(%s)
-                ORDER BY id
-            ''', (monitoreo_ids,))
-            
-            respuestas_all = cursor.fetchall()
+            respuestas_all = []
+            if monitoreo_ids:
+                cursor.execute('''
+                    SELECT * FROM respuestas_monitoreo 
+                    WHERE monitoreo_id = ANY(%s)
+                    ORDER BY id
+                ''', (monitoreo_ids,))
+                respuestas_all = cursor.fetchall()
             
             # Agrupar respuestas por monitoreo_id
             respuestas_map = {}

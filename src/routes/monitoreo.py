@@ -1,4 +1,4 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, g
 from datetime import datetime 
 from src.controllers.monitoreo import MonitoreoController
 from src.database.db import get_db

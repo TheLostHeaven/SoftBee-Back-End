@@ -30,7 +30,8 @@ def create_user_routes():
                 data['password'],
                 data.get('profile_picture')
             )
-            return jsonify({'id': user_id}), 201
+            # El apiario y el inventario vacío se crean automáticamente
+            return jsonify({'id': user_id, 'message': 'Usuario, apiario e inventario vacío creados'}), 201
         except Exception as e:
             return jsonify({'error': str(e)}), 400
 

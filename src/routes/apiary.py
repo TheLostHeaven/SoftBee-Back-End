@@ -30,7 +30,8 @@ def create_apiary_routes():
             if not apiary_id:
                 return jsonify({'error': 'Apiary could not be created'}), 400
             db.commit()
-            return jsonify({'id': apiary_id}), 201
+            # El inventario se crea vacío automáticamente al crear el apiario
+            return jsonify({'id': apiary_id, 'message': 'Apiario creado con inventario vacío'}), 201
         except Exception as e:
             db.rollback()
             return jsonify({'error': str(e)}), 500

@@ -12,13 +12,20 @@ class ApiaryController:
         user = UserModel.get_by_id(self.db, user_id)
         if not user:
             return None
-        return self.model.create(self.db, user_id, name, location)
+        apiary_id = self.model.create(self.db, user_id, name, location)
+        # Crear inventario vacío (no agrega items, solo asegura que el apiario tiene inventario asociado)
+        # No es necesario crear registros en la tabla inventory, ya que el inventario se asocia por apiary_id
+        return apiary_id
 
     def get_apiary(self, apiary_id):
         apiary = self.model.get_by_id(self.db, apiary_id)
         if apiary:
             apiary['inventory'] = InventoryModel.get_all(self.db, apiary_id)
         return apiary
+
+    def get_by_id(self, apiary_id):
+        """Simple method to get apiary by ID without inventory"""
+        return self.model.get_by_id(self.db, apiary_id)
 
     def get_all_apiaries_for_user(self, user_id):
         # Solo retorna apiarios si el usuario existe

@@ -9,9 +9,14 @@ class UserController:
         self.model = UserModel
 
     def create_user(self, nombre, username, email, phone, password, profile_picture=None):
-        """Creates a new user with hashed password using bcrypt"""
+        """Creates a new user, apiary and empty inventory"""
+        from ..controllers.apiary import ApiaryController
         hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
-        return self.model.create(self.db, nombre, username, email, phone, hashed_password, profile_picture)
+        user_id = self.model.create(self.db, nombre, username, email, phone, hashed_password, profile_picture)
+        # Crear apiario automáticamente con el nombre del usuario
+        apiary_controller = ApiaryController(self.db)
+        apiary_controller.create_apiary(user_id, nombre)
+        return user_id
 
 
     def get_user(self, user_id):

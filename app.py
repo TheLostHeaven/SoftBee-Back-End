@@ -4,9 +4,10 @@ from flask_mail import Mail
 from src.utils.email_service import EmailService
 from src.utils.file_handler import FileHandler
 from src.database.db import get_db
-from config import Config
+from config import get_config
 from datetime import datetime
 from flask.json.provider import DefaultJSONProvider 
+import os
 
 class CustomJSONProvider(DefaultJSONProvider):
     def default(self, obj):
@@ -18,7 +19,13 @@ def create_app(testing=False):
     app = Flask(__name__, instance_relative_config=True)
 
     app.json_provider_class = CustomJSONProvider
-    app.config.from_object(Config)
+    
+    # Usar la configuración basada en el entorno
+    if testing:
+        os.environ['FLASK_ENV'] = 'testing'
+    
+    config_class = get_config()
+    app.config.from_object(config_class)
 
     CORS(app, resources={r"/api/*": {"origins": "*"}})
 

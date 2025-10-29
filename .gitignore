@@ -6,9 +6,18 @@
 .vscode
 .vs
 venv/
+
+# Variables de entorno - NO subir archivos con datos sensibles
 .env
+.env.local
+.env.development
+.env.production
+.env.testing
+
+# Bases de datos
 database.db
 *.sqlite3
+*.db
 
 *.pyc
 

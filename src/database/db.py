@@ -1,35 +1,46 @@
 import os
+import sqlite3
 from flask import g, current_app
 import psycopg2
-from urllib.parse import quote_plus  # Importa para codificar la contraseña
+from urllib.parse import quote_plus
 
 def get_db():
     if 'db' not in g:
-        database_url = os.getenv('DATABASE_URL')
-        sslmode_require = os.getenv('SSL_MODE', '') == 'require'
-
+        database_url = current_app.config.get('DATABASE_URL')
+        
         if not database_url:
-            # Configuración local
-            user = os.getenv('PGUSER', 'postgres')
-            password = os.getenv('PGPASSWORD', 'postgres')
-            host = os.getenv('PGHOST', 'localhost')
-            port = os.getenv('PGPORT', '5432')
-            dbname = os.getenv('PGDATABASE', 'softbee')
+            raise ValueError("DATABASE_URL no está configurada")
+        
+        # Detectar tipo de base de datos
+        if database_url.startswith('sqlite'):
+            # Configuración para SQLite
+            db_path = database_url.replace('sqlite:///', '')
             
-            # Codifica la contraseña por si tiene caracteres especiales
-            password_encoded = quote_plus(password)
-            database_url = f"postgresql://{user}:{password_encoded}@{host}:{port}/{dbname}"
-        else:
+            # Crear directorio si no existe
+            db_dir = os.path.dirname(db_path)
+            if db_dir and not os.path.exists(db_dir):
+                os.makedirs(db_dir)
+            
+            g.db = sqlite3.connect(db_path)
+            g.db.row_factory = sqlite3.Row  # Para acceder a columnas por nombre
+            g.db_type = 'sqlite'
+            
+        elif database_url.startswith('postgresql') or database_url.startswith('postgres'):
+            # Configuración para PostgreSQL
             if database_url.startswith("postgres://"):
                 database_url = database_url.replace("postgres://", "postgresql://", 1)
-        
-        # Agrega sslmode=require al URI si es necesario
-        if sslmode_require and 'sslmode=' not in database_url:
-            separator = '?' if '?' not in database_url else '&'
-            database_url += f"{separator}sslmode=require"
-
-        # Conexión SOLO con el URI (sin parámetros adicionales)
-        g.db = psycopg2.connect(database_url)
+            
+            # Agregar SSL si es necesario
+            sslmode_require = os.getenv('SSL_MODE', '') == 'require'
+            if sslmode_require and 'sslmode=' not in database_url:
+                separator = '?' if '?' not in database_url else '&'
+                database_url += f"{separator}sslmode=require"
+            
+            g.db = psycopg2.connect(database_url)
+            g.db_type = 'postgresql'
+        else:
+            raise ValueError(f"Tipo de base de datos no soportado: {database_url}")
+    
     return g.db
 
 def close_db(e=None):
@@ -43,6 +54,15 @@ def init_app(app):
     with app.app_context():
         db = get_db()
         
+        # Mostrar información del entorno y base de datos
+        env = os.getenv('FLASK_ENV')
+        db_type = getattr(g, 'db_type', 'unknown')
+        print(f"🚀 Iniciando aplicación en entorno: {env}")
+        print(f"📂 Usando base de datos: {db_type}")
+        
+        if db_type == 'sqlite':
+            db_path = app.config.get('DATABASE_URL', '').replace('sqlite:///', '')
+            print(f"📁 Archivo SQLite: {db_path}")
 
         from src.models.users import UserModel
         from src.models.password_reset_tokens import PasswordResetTokenModel
@@ -56,13 +76,18 @@ def init_app(app):
         from src.models.monitoreo import MonitoreoModel
         
         # Crear tablas
-        UserModel.init_db(db)
-        PasswordResetTokenModel.init_db(db)
-        ApiaryModel.init_db(db)
-        QuestionModel.init_db(db)
-        InventoryModel.init_db(db)
-        HiveModel.init_db(db)
-        # InspectionModel.init_db(db)
-        ApiaryAccessModel.init_db(db)
-        PasswordResetTokenModel.init_db(db)
-        MonitoreoModel.init_db(db)
+        try:
+            UserModel.init_db(db)
+            PasswordResetTokenModel.init_db(db)
+            ApiaryModel.init_db(db)
+            QuestionModel.init_db(db)
+            InventoryModel.init_db(db)
+            HiveModel.init_db(db)
+            # InspectionModel.init_db(db)
+            ApiaryAccessModel.init_db(db)
+            PasswordResetTokenModel.init_db(db)
+            MonitoreoModel.init_db(db)
+            print("✅ Tablas de base de datos inicializadas correctamente")
+        except Exception as e:
+            print(f"❌ Error al inicializar tablas: {e}")
+            raise

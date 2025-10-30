@@ -1,12 +1,16 @@
 from dotenv import load_dotenv
 import os
-environment = os.getenv('FLASK_ENV', 'local')
-env_file = f'.env.{environment}'
 
+# Cargar el archivo .env principal primero
+load_dotenv()
+
+# Obtener el entorno después de cargar .env
+environment = os.getenv('FLASK_ENV', 'local')
+
+# Intentar cargar archivo específico del entorno si existe
+env_file = f'.env.{environment}'
 if os.path.exists(env_file):
-    load_dotenv(env_file)
-else:
-    load_dotenv()
+    load_dotenv(env_file, override=True)
 
 DATABASE_DIR = os.path.abspath(os.path.dirname(__file__))
 

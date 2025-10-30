@@ -3,7 +3,7 @@ from flask_cors import CORS
 from flask_mail import Mail
 from src.utils.email_service import EmailService
 from src.utils.file_handler import FileHandler
-from src.database.db import get_db
+from src.database.db import get_db, init_app
 from config import get_config
 from datetime import datetime
 from flask.json.provider import DefaultJSONProvider 
@@ -33,7 +33,7 @@ def create_app(testing=False):
     file_handler.init_app(app)
     app.file_handler = file_handler
 
-    from src.database.db import init_app
+    # Inicializar base de datos y migraciones
     init_app(app)
 
     from src.routes.apiary import create_apiary_routes

@@ -44,6 +44,7 @@ def create_app(testing=False):
     from src.routes.auth import create_auth_routes
     from src.routes.monitoreo import create_monitoreo_routes
     from src.routes.reports import create_reports_routes
+    from src.routes.health import create_health_routes
 
     mail = Mail(app)
     email_service = EmailService(mail)
@@ -59,6 +60,7 @@ def create_app(testing=False):
     app.register_blueprint(create_user_routes(), url_prefix='/api')
     app.register_blueprint(create_monitoreo_routes(), url_prefix='/api')
     app.register_blueprint(create_reports_routes(), url_prefix='/api')
+    app.register_blueprint(create_health_routes(), url_prefix='/api')
 
 
     return app

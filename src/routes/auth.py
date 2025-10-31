@@ -229,10 +229,38 @@ def create_auth_routes(get_db_func, email_service):
 
             # Buscar usuario
             user = None
+            
+            # Usar consultas SQL directas compatibles con SQLite
+            from flask import g
+            db_connection = get_db()
+            db_type = getattr(g, 'db_type', 'sqlite')
+            cursor = db_connection.cursor()
+            
             if '@' in identifier:
-                user = UserModel.get_by_email(db, identifier)
+                # Buscar por email
+                if db_type == 'sqlite':
+                    cursor.execute('SELECT * FROM users WHERE email = ?', (identifier,))
+                else:  # PostgreSQL
+                    cursor.execute('SELECT * FROM users WHERE email = %s', (identifier,))
             else:
-                user = UserModel.get_by_username(db, identifier)
+                # Buscar por username
+                if db_type == 'sqlite':
+                    cursor.execute('SELECT * FROM users WHERE username = ?', (identifier,))
+                else:  # PostgreSQL
+                    cursor.execute('SELECT * FROM users WHERE username = %s', (identifier,))
+            
+            row = cursor.fetchone()
+            
+            if row:
+                # Convertir row a diccionario
+                if db_type == 'sqlite':
+                    columns = [description[0] for description in cursor.description]
+                    user = dict(zip(columns, row))
+                else:  # PostgreSQL
+                    columns = [col[0] for col in cursor.description]
+                    user = dict(zip(columns, row))
+            
+            cursor.close()
 
             if not user:
                 current_app.logger.warning(f'Login attempt for non-existent user: {identifier}')

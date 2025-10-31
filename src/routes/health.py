@@ -871,4 +871,112 @@ def create_health_routes():
                 "timestamp": datetime.now().isoformat()
             }), 500
 
+    @health_bp.route('/test/login', methods=['POST'])
+    def test_login():
+        """
+        Endpoint de login compatible con SQLite para pruebas
+        """
+        try:
+            if not request.is_json:
+                return jsonify({'error': 'Content-Type must be application/json'}), 400
+
+            data = request.get_json()
+            from flask import g
+            import bcrypt
+            
+            # Obtener datos de entrada
+            identifier = data.get('email', data.get('username', '')).strip().lower()
+            password = data.get('password', '').strip()
+
+            if not password:
+                return jsonify({'error': 'Password is required'}), 400
+                
+            if not identifier:
+                return jsonify({'error': 'Username or email is required'}), 400
+
+            db_connection = get_db()
+            db_type = getattr(g, 'db_type', 'sqlite')
+            
+            # Buscar usuario (compatible con SQLite)
+            cursor = db_connection.cursor()
+            user = None
+            
+            if '@' in identifier:
+                # Buscar por email
+                if db_type == 'sqlite':
+                    cursor.execute('SELECT * FROM users WHERE email = ?', (identifier,))
+                else:  # PostgreSQL
+                    cursor.execute('SELECT * FROM users WHERE email = %s', (identifier,))
+            else:
+                # Buscar por username
+                if db_type == 'sqlite':
+                    cursor.execute('SELECT * FROM users WHERE username = ?', (identifier,))
+                else:  # PostgreSQL
+                    cursor.execute('SELECT * FROM users WHERE username = %s', (identifier,))
+            
+            row = cursor.fetchone()
+            
+            if row:
+                # Convertir row a diccionario
+                if db_type == 'sqlite':
+                    columns = [description[0] for description in cursor.description]
+                    user = dict(zip(columns, row))
+                else:  # PostgreSQL
+                    columns = [col[0] for col in cursor.description]
+                    user = dict(zip(columns, row))
+            
+            cursor.close()
+
+            if not user:
+                return jsonify({
+                    'error': 'Invalid credentials',
+                    'message': 'User not found'
+                }), 401
+
+            # Verificar contraseña
+            stored_password = user['password']
+            password_match = False
+            
+            try:
+                if stored_password and (stored_password.startswith('$2b$') or stored_password.startswith('$2a$')):
+                    password_match = bcrypt.checkpw(password.encode('utf-8'), stored_password.encode('utf-8'))
+                else:
+                    password_match = False
+            except Exception as e:
+                password_match = False
+            
+            if not password_match:
+                return jsonify({
+                    'error': 'Invalid credentials',
+                    'message': 'Incorrect password'
+                }), 401
+
+            # Login exitoso - limpiar datos sensibles
+            safe_user = {
+                "id": user.get("id"),
+                "nombre": user.get("nombre"),
+                "username": user.get("username"),
+                "email": user.get("email"),
+                "phone": user.get("phone"),
+                "profile_picture": user.get("profile_picture"),
+                "created_at": str(user.get("created_at")) if user.get("created_at") else None,
+                "updated_at": str(user.get("updated_at")) if user.get("updated_at") else None
+            }
+
+            return jsonify({
+                'status': 'success',
+                'message': 'Login successful',
+                'timestamp': datetime.now().isoformat(),
+                'database_type': db_type,
+                'user': safe_user,
+                'note': 'Este es un endpoint de prueba - usar /api/login para producción'
+            }), 200
+            
+        except Exception as e:
+            return jsonify({
+                "status": "error",
+                "message": f"Error en login: {str(e)}",
+                "timestamp": datetime.now().isoformat()
+            }), 500
+
     return health_bp

@@ -50,6 +50,37 @@ class InventoryModel:
         return dict(row) if row else None
 
     @staticmethod
+    def create_initial_inventory(db, apiary_id):
+        """
+        Crea el inventario inicial para un nuevo apiario
+        """
+        try:
+            cursor = db.cursor()
+            # Lista de items iniciales básicos que todo apiario debería tener
+            initial_items = [
+                ("Marcos", 0, "unidades", "Marcos para las colmenas", 10),
+                ("Cera estampada", 0, "láminas", "Láminas de cera para los marcos", 20),
+                ("Ahumador", 0, "unidades", "Herramienta para manejo de abejas", 1),
+                ("Overol", 0, "unidades", "Equipo de protección", 1),
+                ("Guantes", 0, "pares", "Equipo de protección", 2)
+            ]
+            
+            for item in initial_items:
+                cursor.execute('''
+                    INSERT INTO inventory 
+                    (apiary_id, name, quantity, unit, description, minimum_stock)
+                    VALUES (%s, %s, %s, %s, %s, %s)
+                ''', (apiary_id, *item))
+            
+            db.commit()
+            return True
+        except Exception as e:
+            db.rollback()
+            raise e
+        finally:
+            cursor.close()
+
+    @staticmethod
     def _execute_update(db, query, params=()):
         cursor = db.cursor()
         cursor.execute(query, params)

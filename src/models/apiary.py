@@ -44,12 +44,18 @@ class ApiaryModel:
     @staticmethod
     def create(db, user_id, name, location=None, beehives_count=0, treatments=False):
         try:
+            from .inventory import InventoryModel
+            
             cursor = db.cursor()
+            # Crear el apiario
             cursor.execute(
                 'INSERT INTO apiaries (user_id, name, location, beehives_count, treatments) VALUES (%s, %s, %s, %s, %s) RETURNING id',
-                (user_id, name, location, beehives_count, treatments)
-            )
+                (user_id, name, location, beehives_count, treatments))
             apiary_id = cursor.fetchone()[0]
+            
+            # Crear el inventario inicial para el apiario
+            InventoryModel.create_initial_inventory(db, apiary_id)
+            
             db.commit()
             return apiary_id
         except Exception as e:

@@ -1,0 +1,37 @@
+[
+    {
+        "name": "Marcos",
+        "quantity": 0,
+        "unit": "unidades",
+        "description": "Marcos para las colmenas",
+        "minimum_stock": 10
+    },
+    {
+        "name": "Cera estampada",
+        "quantity": 0,
+        "unit": "láminas",
+        "description": "Láminas de cera para los marcos",
+        "minimum_stock": 20
+    },
+    {
+        "name": "Ahumador",
+        "quantity": 0,
+        "unit": "unidades",
+        "description": "Herramienta para manejo de abejas",
+        "minimum_stock": 1
+    },
+    {
+        "name": "Overol",
+        "quantity": 0,
+        "unit": "unidades",
+        "description": "Equipo de protección",
+        "minimum_stock": 1
+    },
+    {
+        "name": "Guantes",
+        "quantity": 0,
+        "unit": "pares",
+        "description": "Equipo de protección",
+        "minimum_stock": 2
+    }
+]

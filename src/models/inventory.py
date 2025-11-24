@@ -1,5 +1,7 @@
 import psycopg2
 import psycopg2.extras
+import json
+import os
 
 class InventoryModel:
     @staticmethod
@@ -52,25 +54,32 @@ class InventoryModel:
     @staticmethod
     def create_initial_inventory(db, apiary_id):
         """
-        Crea el inventario inicial para un nuevo apiario
+        Carga el inventario inicial para un nuevo apiario desde un archivo JSON configurable.
         """
         try:
-            cursor = db.cursor()
-            # Lista de items iniciales básicos que todo apiario debería tener
-            initial_items = [
-                ("Marcos", 0, "unidades", "Marcos para las colmenas", 10),
-                ("Cera estampada", 0, "láminas", "Láminas de cera para los marcos", 20),
-                ("Ahumador", 0, "unidades", "Herramienta para manejo de abejas", 1),
-                ("Overol", 0, "unidades", "Equipo de protección", 1),
-                ("Guantes", 0, "pares", "Equipo de protección", 2)
-            ]
+            config_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'config', 'default_inventory_items.json')
             
-            for item in initial_items:
-                cursor.execute('''
-                    INSERT INTO inventory 
-                    (apiary_id, name, quantity, unit, description, minimum_stock)
-                    VALUES (%s, %s, %s, %s, %s, %s)
-                ''', (apiary_id, *item))
+            if not os.path.exists(config_path):
+                raise FileNotFoundError(f"Configuration file not found: {config_path}")
+                
+            with open(config_path, 'r', encoding='utf-8') as f:
+                initial_items_data = json.load(f)
+
+            cursor = db.cursor()
+            
+            for item_data in initial_items_data:
+                name = item_data.get("name")
+                quantity = item_data.get("quantity", 0)
+                unit = item_data.get("unit", "unit")
+                description = item_data.get("description")
+                minimum_stock = item_data.get("minimum_stock", 0)
+                
+                if name: # Ensure name exists before inserting
+                    cursor.execute('''
+                        INSERT INTO inventory 
+                        (apiary_id, name, quantity, unit, description, minimum_stock)
+                        VALUES (%s, %s, %s, %s, %s, %s)
+                    ''', (apiary_id, name, quantity, unit, description, minimum_stock))
             
             db.commit()
             return True
@@ -229,7 +238,9 @@ class InventoryModel:
             '''SELECT 
                 COUNT(*) as total_items,
                 SUM(quantity) as total_quantity,
-                COUNT(CASE WHEN quantity <= minimum_stock THEN 1 END) as low_stock_items
+                COUNT(CASE WHEN quantity > 0 AND quantity <= minimum_stock THEN 1 END) as low_stock_items,
+                COUNT(CASE WHEN quantity = 0 THEN 1 END) as out_of_stock_items,
+                COUNT(CASE WHEN quantity > minimum_stock THEN 1 END) as in_stock_items
             FROM inventory 
             WHERE apiary_id = %s''',
             (apiary_id,)

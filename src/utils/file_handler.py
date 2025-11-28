@@ -13,7 +13,14 @@ class FileHandler:
         
         app.config.setdefault('PROFILE_PICTURES_FOLDER', self.UPLOAD_FOLDER)
         app.config.setdefault('MAX_CONTENT_LENGTH', 2 * 1024 * 1024)  # 2MB
-        app.config.setdefault('BASE_URL', "")
+        # Set default BASE_URL for development if not already set
+        if app.config.get('FLASK_ENV') == 'development' or app.config.get('FLASK_ENV') == 'local':
+            app.config.setdefault('BASE_URL', "http://localhost:5000")
+        else:
+            # For production or other environments, ensure BASE_URL is explicitly set
+            app.config.setdefault('BASE_URL', "") 
+
+        app.logger.debug(f"FileHandler initialized with BASE_URL: {app.config.get('BASE_URL')}")
 
         self.ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
         os.makedirs(self.UPLOAD_FOLDER, exist_ok=True)

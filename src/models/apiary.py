@@ -1,5 +1,6 @@
 import psycopg2
 import psycopg2.extras
+from .inventory import InventoryModel
 
 class ApiaryModel:
     @staticmethod

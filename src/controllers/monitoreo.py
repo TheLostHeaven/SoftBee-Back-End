@@ -14,15 +14,25 @@ class MonitoreoController:
         
         # Validar que la colmena existe
         cursor = self.db.cursor()
-        cursor.execute("SELECT id FROM colmenas WHERE id = %s", (id_colmena,))
+        cursor.execute("SELECT id FROM hives WHERE id = %s", (id_colmena,))
         if not cursor.fetchone():
             raise ValueError("Colmena no encontrada")
         
         # Validar que el apiario existe
-        cursor.execute("SELECT id FROM apiarios WHERE id = %s", (id_apiario,))
+        cursor.execute("SELECT id FROM apiaries WHERE id = %s", (id_apiario,))
         if not cursor.fetchone():
             raise ValueError("Apiario no encontrado")
         
+        # Validar la estructura de las respuestas
+        if respuestas is not None:
+            if not isinstance(respuestas, list):
+                raise TypeError("El campo 'respuestas' debe ser una lista.")
+            for r in respuestas:
+                if not isinstance(r, dict):
+                    raise TypeError("Cada elemento en 'respuestas' debe ser un objeto.")
+                if 'pregunta_id' not in r or 'pregunta_texto' not in r:
+                    raise ValueError("Cada respuesta debe contener 'pregunta_id' y 'pregunta_texto'.")
+
         return self.model.create(
             self.db, 
             id_colmena, 

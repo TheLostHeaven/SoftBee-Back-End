@@ -57,7 +57,7 @@ class InventoryModel:
         Carga el inventario inicial para un nuevo apiario desde un archivo JSON configurable.
         """
         try:
-            config_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'config', 'default_inventory_items.json')
+            config_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'config', 'default_inventary.json')
             
             if not os.path.exists(config_path):
                 raise FileNotFoundError(f"Configuration file not found: {config_path}")

@@ -1,4 +1,4 @@
-from flask import Blueprint, request, jsonify, g
+from flask import Blueprint, request, jsonify, g, current_app
 from datetime import datetime 
 from src.controllers.monitoreo import MonitoreoController
 from src.database.db import get_db
@@ -9,12 +9,16 @@ def create_monitoreo_routes():
 
     @monitoreo_bp.route('/monitoreos', methods=['POST'])
     def create_monitoreo():
+        current_app.logger.info("Ruta /monitoreos (POST) alcanzada.")
         db = get_db()
         controller = MonitoreoController(db)
 
         data = request.get_json()
+        current_app.logger.debug(f"Datos recibidos: {data}")
+
         required = ['id_colmena', 'id_apiario', 'respuestas']
         if not all(field in data for field in required):
+            current_app.logger.error("Faltan campos requeridos en la solicitud.")
             return jsonify({'error': 'Missing required fields'}), 400
 
         try:
@@ -25,11 +29,13 @@ def create_monitoreo_routes():
                 data['respuestas'],
                 data.get('datos_adicionales')
             )
+            current_app.logger.info(f"Monitoreo creado exitosamente con ID: {monitoreo_id}")
             return jsonify({
                 'id': monitoreo_id,
                 'message': 'Monitoreo creado exitosamente'
             }), 201
         except Exception as e:
+            current_app.logger.error(f"Error al crear monitoreo: {e}", exc_info=True)
             return jsonify({'error': str(e)}), 400
 
     @monitoreo_bp.route('/monitoreos', methods=['GET'])

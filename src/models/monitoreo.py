@@ -1,6 +1,7 @@
 import json
 from datetime import datetime
 import psycopg2.extras
+from flask import current_app
 
 class MonitoreoModel:
     @staticmethod
@@ -66,11 +67,13 @@ class MonitoreoModel:
     @staticmethod
     def create(db, beehive_id, apiary_id, fecha, respuestas=None, datos_adicionales=None):
         """Crea un nuevo monitoreo en PostgreSQL"""
+        current_app.logger.info("Iniciando MonitoreoModel.create")
         cursor = db.cursor()
         try:
             # Usar tipo JSONB nativo de PostgreSQL
             datos_json = json.dumps(datos_adicionales) if datos_adicionales else None
             
+            current_app.logger.info("Insertando en la tabla 'monitoreos'...")
             # Insertar monitoreo principal y obtener ID creado
             cursor.execute('''
                 INSERT INTO monitoreos (beehive_id, apiary_id, fecha, datos_json)
@@ -79,9 +82,11 @@ class MonitoreoModel:
             ''', (beehive_id, apiary_id, fecha, datos_json))
             
             monitoreo_id = cursor.fetchone()[0]
+            current_app.logger.info(f"Insertado en 'monitoreos' con ID: {monitoreo_id}")
             
             # Insertar respuestas usando ejecución múltiple si hay muchas
             if respuestas:
+                current_app.logger.info("Preparando datos para 'respuestas_monitoreo'...")
                 respuestas_data = [
                     (
                         monitoreo_id,
@@ -93,20 +98,26 @@ class MonitoreoModel:
                     for respuesta in respuestas
                 ]
                 
+                current_app.logger.info(f"Insertando {len(respuestas_data)} registros en 'respuestas_monitoreo'...")
                 cursor.executemany('''
                     INSERT INTO respuestas_monitoreo 
                     (monitoreo_id, pregunta_id, pregunta_texto, respuesta, tipo_respuesta)
                     VALUES (%s, %s, %s, %s, %s)
                 ''', respuestas_data)
+                current_app.logger.info("Inserción en 'respuestas_monitoreo' completada.")
             
+            current_app.logger.info("Haciendo commit de la transacción...")
             db.commit()
+            current_app.logger.info("Commit exitoso.")
             return monitoreo_id
             
         except Exception as e:
+            current_app.logger.error(f"Error en MonitoreoModel.create: {e}", exc_info=True)
             db.rollback()
             raise e
         finally:
             cursor.close()
+            current_app.logger.info("Cerrando cursor de la base de datos.")
 
     @staticmethod
     def get_by_id(db, monitoreo_id):

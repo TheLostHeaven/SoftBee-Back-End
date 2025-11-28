@@ -8,6 +8,7 @@ from config import get_config
 from datetime import datetime
 from flask.json.provider import DefaultJSONProvider 
 import os
+import logging # Import logging
 
 class CustomJSONProvider(DefaultJSONProvider):
     def default(self, obj):
@@ -35,6 +36,9 @@ def create_app(testing=False):
 
     # Inicializar base de datos y migraciones
     init_app(app)
+
+    # Set logging level for Flask app
+    app.logger.setLevel(logging.DEBUG) # Set logging level to DEBUG
 
     from src.routes.apiary import create_apiary_routes
     from src.routes.beehive import create_hive_routes

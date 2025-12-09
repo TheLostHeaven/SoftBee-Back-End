@@ -80,19 +80,18 @@ class ReportsController:
 
             # Calcular score general ponderado
             overall_score = (
-                (avg_scores["estado_colmena_avg"] * 0.4) +  # 40%
-                (avg_scores["produccion_avg"] / 100 * 4 * 0.3) + # Normalizado y 30%
-                (avg_scores["salud_avg"] * 0.3)  # 30%
+                (avg_scores["estado_colmena_avg"] * 0.5) +  # 50%
+                (avg_scores["salud_avg"] * 0.5)  # 50%
             )
             
             # Normalizar a 100
-            final_score = min(100, (overall_score / 3.4) * 100) # 3.4 es el max score posible (4*0.4 + 4*0.3 + 2*0.3)
+            final_score = min(100, (overall_score / 3.0) * 100) # 3.0 es el max score posible (4*0.5 + 2*0.5)
 
             # Añadir datos procesados al reporte
             report["processed_data"] = {
                 "scores": avg_scores,
                 "overall_score": round(final_score),
-                "status": "Bueno" if final_score > 70 else ("Regular" if final_score > 40 else "Alerta")
+                "status": "Bueno" if final_score > 80 else ("Regular" if final_score > 50 else ("Malo" if final_score > 20 else "Crítico"))
             }
             processed.append(report)
             

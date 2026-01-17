@@ -232,10 +232,10 @@ def downgrade():
 ```bash
 # Para desarrollo local
 FLASK_ENV=local
-DATABASE_URL=sqlite:///instance/softbee_dev.db
+DATABASE_URL=postgresql://postgres:postgres@localhost:5432/softbee_local
 
-# Para desarrollo con PostgreSQL
-# DATABASE_URL=postgresql://user:pass@localhost/softbee_dev
+# Para desarrollo
+DATABASE_URL=postgresql://user:pass@localhost:5432/softbee_dev
 
 # Para producción
 # DATABASE_URL=postgresql://user:pass@host/softbee_prod

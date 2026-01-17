@@ -17,11 +17,8 @@ from flask_migrate import Migrate
 # Configuración mínima de Flask
 app = Flask(__name__)
 
-# Ruta absoluta para SQLite
-basedir = os.path.abspath(os.path.dirname(__file__))
-database_path = os.path.join(basedir, 'instance', 'migrations_db.sqlite')
-
-app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{database_path}'
+# Configuración PostgreSQL para migraciones
+app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/softbee_migrations")
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # Inicializar extensiones
@@ -33,7 +30,8 @@ with app.app_context():
     from src.models.sqlalchemy_models import *
 
 if __name__ == '__main__':
-    print(f"Base de datos de migraciones: {database_path}")
+    db_url = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/softbee_migrations")
+    print(f"Base de datos de migraciones: {db_url}")
     print("Para inicializar migraciones: python migrate_manager.py init")
     print("Para crear migración: python migrate_manager.py migrate 'mensaje'")
     print("Para aplicar migraciones: python migrate_manager.py upgrade")

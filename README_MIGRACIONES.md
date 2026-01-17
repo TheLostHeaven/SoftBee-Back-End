@@ -45,8 +45,6 @@ SoftBee-Back-End/
 │   └── versions/                       
 │       ├── 001_initial_migration.py     # ✅ Migración inicial (aplicada)
 │       └── 002_add_special_observations.py # ✅ Ejemplo (aplicada)
-├── instance/
-│   └── migrations_db.sqlite            # 💾 BD de migraciones
 ├── src/models/
 │   └── sqlalchemy_models.py           # 🏗️ Modelos para migraciones
 ├── migrate_manager.py                 # 🔧 Manager de migraciones

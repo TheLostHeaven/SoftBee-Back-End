@@ -54,19 +54,7 @@ def create_health_routes():
             db_connection = get_db()
             
             # Detectar tipo de base de datos y hacer una consulta simple
-            if database_url.startswith('sqlite'):
-                cursor = db_connection.cursor()
-                cursor.execute("SELECT 1")
-                result = cursor.fetchone()
-                cursor.close()
-                
-                db_info = {
-                    "type": "SQLite",
-                    "path": database_url.replace('sqlite:///', ''),
-                    "file_exists": os.path.exists(database_url.replace('sqlite:///', ''))
-                }
-                
-            elif database_url.startswith('postgresql') or database_url.startswith('postgres'):
+            if database_url.startswith('postgresql') or database_url.startswith('postgres'):
                 cursor = db_connection.cursor()
                 cursor.execute("SELECT 1")
                 result = cursor.fetchone()
@@ -114,13 +102,7 @@ def create_health_routes():
             db_connection = get_db()
             tables = []
             
-            if database_url.startswith('sqlite'):
-                cursor = db_connection.cursor()
-                cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
-                tables = [row[0] for row in cursor.fetchall()]
-                cursor.close()
-                
-            elif database_url.startswith('postgresql') or database_url.startswith('postgres'):
+            if database_url.startswith('postgresql') or database_url.startswith('postgres'):
                 cursor = db_connection.cursor()
                 cursor.execute("""
                     SELECT table_name 
@@ -181,7 +163,7 @@ def create_health_routes():
     @health_bp.route('/test/create-user', methods=['POST'])
     def test_create_user():
         """
-        Endpoint para crear un usuario de prueba (Compatible con SQLite y PostgreSQL)
+        Endpoint para crear un usuario de prueba (Compatible con PostgreSQL)
         """
         try:
             # Obtener datos del request o usar valores por defecto
@@ -221,7 +203,7 @@ def create_health_routes():
             import bcrypt
             
             db_connection = get_db()
-            db_type = getattr(g, 'db_type', 'sqlite')
+            db_type = getattr(g, 'db_type', 'postgresql')
             
             # Hash de la contraseña
             hashed_password = bcrypt.hashpw(user_data['password'].encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
@@ -229,48 +211,30 @@ def create_health_routes():
             cursor = db_connection.cursor()
             
             try:
-                if db_type == 'sqlite':
-                    cursor.execute(
-                        '''
-                        INSERT INTO users (nombre, username, email, phone, password, profile_picture)
-                        VALUES (?, ?, ?, ?, ?, ?)
-                        ''',
-                        (user_data['nombre'], user_data['username'].lower(), user_data['email'].lower(), 
-                         user_data['phone'], hashed_password, 'profile_picture.png')
-                    )
-                    user_id = cursor.lastrowid
-                else:  # PostgreSQL
-                    cursor.execute(
-                        '''
-                        INSERT INTO users (nombre, username, email, phone, password, profile_picture)
-                        VALUES (%s, %s, %s, %s, %s, %s)
-                        RETURNING id
-                        ''',
-                        (user_data['nombre'], user_data['username'].lower(), user_data['email'].lower(), 
-                         user_data['phone'], hashed_password, 'profile_picture.png')
-                    )
-                    user_id = cursor.fetchone()[0]
+                # PostgreSQL
+                cursor.execute(
+                    '''
+                    INSERT INTO users (nombre, username, email, phone, password, profile_picture)
+                    VALUES (%s, %s, %s, %s, %s, %s)
+                    RETURNING id
+                    ''',
+                    (user_data['nombre'], user_data['username'].lower(), user_data['email'].lower(), 
+                     user_data['phone'], hashed_password, 'profile_picture.png')
+                )
+                user_id = cursor.fetchone()[0]
                 
                 db_connection.commit()
                 cursor.close()
                 
                 # Crear apiario automáticamente (simplificado)
                 cursor = db_connection.cursor()
-                if db_type == 'sqlite':
-                    cursor.execute(
-                        '''
-                        INSERT INTO apiaries (name, location, user_id)
-                        VALUES (?, ?, ?)
-                        ''',
-                        (f"Apiario de {user_data['nombre']}", "Ubicación por defecto", user_id)
-                    )
-                else:  # PostgreSQL
-                    cursor.execute(
-                        '''
-                        INSERT INTO apiaries (name, location, user_id)
-                        VALUES (%s, %s, %s)
-                        ''',
-                        (f"Apiario de {user_data['nombre']}", "Ubicación por defecto", user_id)
+                # PostgreSQL
+                cursor.execute(
+                    '''
+                    INSERT INTO apiaries (name, location, user_id)
+                    VALUES (%s, %s, %s)
+                    ''',
+                    (f"Apiario de {user_data['nombre']}", "Ubicación por defecto", user_id)
                     )
                 
                 db_connection.commit()
@@ -306,7 +270,7 @@ def create_health_routes():
     @health_bp.route('/test/users', methods=['GET'])
     def test_get_users():
         """
-        Endpoint para listar usuarios de prueba (Compatible con SQLite y PostgreSQL)
+        Endpoint para listar usuarios de prueba (Compatible con PostgreSQL)
         """
         try:
             from flask import g
@@ -363,7 +327,7 @@ def create_health_routes():
     @health_bp.route('/test/user/<int:user_id>', methods=['GET'])
     def test_get_user(user_id):
         """
-        Endpoint para obtener un usuario específico por ID (Compatible con SQLite y PostgreSQL)
+        Endpoint para obtener un usuario específico por ID (Compatible con PostgreSQL)
         """
         try:
             from flask import g
@@ -660,150 +624,6 @@ def create_health_routes():
             }), 500
 
     @health_bp.route('/test/fix-sqlite-tables', methods=['POST'])
-    def fix_sqlite_tables():
-        """
-        Endpoint para corregir las tablas SQLite con sintaxis correcta
-        """
-        try:
-            from flask import g
-            
-            db_connection = get_db()
-            db_type = getattr(g, 'db_type', 'sqlite')
-            
-            if db_type != 'sqlite':
-                return jsonify({
-                    "status": "error",
-                    "message": "Este endpoint solo funciona con SQLite",
-                    "timestamp": datetime.now().isoformat()
-                }), 400
-            
-            cursor = db_connection.cursor()
-            
-            # Primero, verificar si hay datos existentes
-            cursor.execute("SELECT COUNT(*) FROM users")
-            users_count = cursor.fetchone()[0]
-            
-            cursor.execute("SELECT COUNT(*) FROM apiaries")
-            apiaries_count = cursor.fetchone()[0]
-            
-            # Respaldo de datos existentes si los hay
-            users_backup = []
-            apiaries_backup = []
-            
-            if users_count > 0:
-                cursor.execute("SELECT * FROM users")
-                columns = [description[0] for description in cursor.description]
-                rows = cursor.fetchall()
-                users_backup = [dict(zip(columns, row)) for row in rows]
-            
-            if apiaries_count > 0:
-                cursor.execute("SELECT * FROM apiaries")
-                columns = [description[0] for description in cursor.description]
-                rows = cursor.fetchall()
-                apiaries_backup = [dict(zip(columns, row)) for row in rows]
-            
-            # Recrear tabla users con sintaxis correcta de SQLite
-            cursor.execute("DROP TABLE IF EXISTS users_new")
-            cursor.execute('''
-                CREATE TABLE users_new (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    nombre VARCHAR(100) NOT NULL,
-                    username VARCHAR(100) UNIQUE NOT NULL,
-                    email VARCHAR(100) UNIQUE NOT NULL,
-                    phone VARCHAR(20),
-                    password VARCHAR(200) NOT NULL,
-                    profile_picture VARCHAR(255),
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                )
-            ''')
-            
-            # Recrear tabla apiaries con sintaxis correcta de SQLite
-            cursor.execute("DROP TABLE IF EXISTS apiaries_new")
-            cursor.execute('''
-                CREATE TABLE apiaries_new (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    user_id INTEGER NOT NULL,
-                    name VARCHAR(100) NOT NULL,
-                    location VARCHAR(50),   
-                    beehives_count INTEGER DEFAULT 0,
-                    treatments BOOLEAN DEFAULT FALSE,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    FOREIGN KEY (user_id) REFERENCES users_new(id) ON DELETE CASCADE
-                )
-            ''')
-            
-            # Restaurar datos en las nuevas tablas
-            restored_users = 0
-            restored_apiaries = 0
-            
-            for user in users_backup:
-                if user.get('nombre'):  # Solo restaurar usuarios válidos
-                    cursor.execute('''
-                        INSERT INTO users_new (nombre, username, email, phone, password, profile_picture, created_at, updated_at)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                    ''', (
-                        user.get('nombre'),
-                        user.get('username'),
-                        user.get('email'),
-                        user.get('phone'),
-                        user.get('password'),
-                        user.get('profile_picture'),
-                        user.get('created_at'),
-                        user.get('updated_at')
-                    ))
-                    restored_users += 1
-            
-            for apiary in apiaries_backup:
-                if apiary.get('name'):  # Solo restaurar apiarios válidos
-                    cursor.execute('''
-                        INSERT INTO apiaries_new (user_id, name, location, beehives_count, treatments, created_at, updated_at)
-                        VALUES (?, ?, ?, ?, ?, ?, ?)
-                    ''', (
-                        apiary.get('user_id'),
-                        apiary.get('name'),
-                        apiary.get('location'),
-                        apiary.get('beehives_count', 0),
-                        apiary.get('treatments', False),
-                        apiary.get('created_at'),
-                        apiary.get('updated_at')
-                    ))
-                    restored_apiaries += 1
-            
-            # Reemplazar tablas originales
-            cursor.execute("DROP TABLE IF EXISTS users")
-            cursor.execute("DROP TABLE IF EXISTS apiaries")
-            cursor.execute("ALTER TABLE users_new RENAME TO users")
-            cursor.execute("ALTER TABLE apiaries_new RENAME TO apiaries")
-            
-            # Crear índices
-            cursor.execute("CREATE INDEX IF NOT EXISTS idx_users_username ON users (username)")
-            cursor.execute("CREATE INDEX IF NOT EXISTS idx_users_email ON users (email)")
-            
-            db_connection.commit()
-            cursor.close()
-            
-            return jsonify({
-                "status": "ok",
-                "message": "Tablas SQLite corregidas exitosamente",
-                "timestamp": datetime.now().isoformat(),
-                "backup_info": {
-                    "users_backed_up": users_count,
-                    "apiaries_backed_up": apiaries_count,
-                    "users_restored": restored_users,
-                    "apiaries_restored": restored_apiaries
-                },
-                "next_steps": "Ahora puedes crear usuarios y verás que los IDs se generan correctamente"
-            }), 200
-            
-        except Exception as e:
-            db_connection.rollback()
-            return jsonify({
-                "status": "error",
-                "message": f"Error al corregir tablas: {str(e)}",
-                "timestamp": datetime.now().isoformat()
-            }), 500
 
     @health_bp.route('/test/apiaries', methods=['GET'])
     def test_get_apiaries():
@@ -874,7 +694,7 @@ def create_health_routes():
     @health_bp.route('/test/login', methods=['POST'])
     def test_login():
         """
-        Endpoint de login compatible con SQLite para pruebas
+        Endpoint de login para pruebas con PostgreSQL
         """
         try:
             if not request.is_json:
@@ -895,9 +715,9 @@ def create_health_routes():
                 return jsonify({'error': 'Username or email is required'}), 400
 
             db_connection = get_db()
-            db_type = getattr(g, 'db_type', 'sqlite')
+            db_type = getattr(g, 'db_type', 'postgresql')
             
-            # Buscar usuario (compatible con SQLite)
+            # Buscar usuario en PostgreSQL
             cursor = db_connection.cursor()
             user = None
             

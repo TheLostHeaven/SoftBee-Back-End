@@ -5,7 +5,6 @@ from src.middleware.jwt import generate_token
 from src.controllers.auth import AuthController
 from src.utils.email_service import EmailService
 from src.models.apiary import ApiaryModel
-import sqlite3
 import bcrypt
 
 def create_auth_routes(get_db_func, email_service):
@@ -200,7 +199,7 @@ def create_auth_routes(get_db_func, email_service):
 
         except ValueError as ve:
             return jsonify({'error': str(ve)}), 400
-        except sqlite3.Error as dbe:
+        except Exception as dbe:
             current_app.logger.error(f'Database error: {str(dbe)}')
             return jsonify({'error': 'Database operation failed'}), 500
         except Exception as err:
@@ -230,35 +229,28 @@ def create_auth_routes(get_db_func, email_service):
             # Buscar usuario
             user = None
             
-            # Usar consultas SQL directas compatibles con SQLite
+            # Usar consultas SQL directas para PostgreSQL
             from flask import g
             db_connection = get_db()
-            db_type = getattr(g, 'db_type', 'sqlite')
+            db_type = getattr(g, 'db_type', 'postgresql')
             cursor = db_connection.cursor()
             
             if '@' in identifier:
                 # Buscar por email
-                if db_type == 'sqlite':
-                    cursor.execute('SELECT * FROM users WHERE email = ?', (identifier,))
-                else:  # PostgreSQL
-                    cursor.execute('SELECT * FROM users WHERE email = %s', (identifier,))
+                # PostgreSQL
+                cursor.execute('SELECT * FROM users WHERE email = %s', (identifier,))
             else:
                 # Buscar por username
-                if db_type == 'sqlite':
-                    cursor.execute('SELECT * FROM users WHERE username = ?', (identifier,))
-                else:  # PostgreSQL
-                    cursor.execute('SELECT * FROM users WHERE username = %s', (identifier,))
+                # PostgreSQL
+                cursor.execute('SELECT * FROM users WHERE username = %s', (identifier,))
             
             row = cursor.fetchone()
             
             if row:
                 # Convertir row a diccionario
-                if db_type == 'sqlite':
-                    columns = [description[0] for description in cursor.description]
-                    user = dict(zip(columns, row))
-                else:  # PostgreSQL
-                    columns = [col[0] for col in cursor.description]
-                    user = dict(zip(columns, row))
+                # PostgreSQL
+                columns = [col[0] for col in cursor.description]
+                user = dict(zip(columns, row))
             
             cursor.close()
 
@@ -313,7 +305,7 @@ def create_auth_routes(get_db_func, email_service):
                 'message': 'Login successful'
             }), 200
 
-        except sqlite3.Error as db_error:
+        except Exception as db_error:
             current_app.logger.error(f'Database error: {str(db_error)}')
             return jsonify({'error': 'Database operation failed'}), 500
         except Exception as e:

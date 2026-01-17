@@ -1,5 +1,4 @@
 # src/models/base_model.py
-import sqlite3
 from flask import current_app
 
 class BaseModel:
@@ -11,7 +10,7 @@ class BaseModel:
         try:
             cursor = db.execute(query, params)
             return [dict(row) for row in cursor.fetchall()]
-        except sqlite3.Error as e:
+        except Exception as e:
             current_app.logger.error(f"Query error: {str(e)} - Query: {query}")
             raise
 
@@ -22,7 +21,7 @@ class BaseModel:
             cursor = db.execute(query, params)
             db.commit()
             return cursor
-        except sqlite3.Error as e:
+        except Exception as e:
             db.rollback()
             current_app.logger.error(f"Update error: {str(e)} - Query: {query}")
             raise   

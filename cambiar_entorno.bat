@@ -6,11 +6,11 @@ set ENTORNO=%1
 if "%ENTORNO%"=="" set ENTORNO=local
 
 if "%ENTORNO%"=="local" (
-    echo 🔧 Cambiando a entorno LOCAL ^(SQLite^)
+    echo 🔧 Cambiando a entorno LOCAL ^(PostgreSQL local^)
     set FLASK_ENV=local
     echo FLASK_ENV=local > .env
     echo ✅ Entorno configurado: LOCAL
-    echo 📂 Base de datos: SQLite ^(instance/local_database.db^)
+    echo 📂 Base de datos: PostgreSQL local ^(softbee_local^)
     goto end
 )
 
@@ -35,11 +35,11 @@ if "%ENTORNO%"=="production" (
 )
 
 if "%ENTORNO%"=="testing" (
-    echo 🔧 Cambiando a entorno TESTING ^(SQLite en memoria^)
+    echo 🔧 Cambiando a entorno TESTING ^(PostgreSQL para tests^)
     set FLASK_ENV=testing
     echo FLASK_ENV=testing > .env
     echo ✅ Entorno configurado: TESTING
-    echo 📂 Base de datos: SQLite en memoria
+    echo 📂 Base de datos: PostgreSQL ^(softbee_test^)
     goto end
 )
 

@@ -7,11 +7,11 @@ ENTORNO=${1:-local}
 
 case $ENTORNO in
     "local")
-        echo "🔧 Cambiando a entorno LOCAL (SQLite)"
+        echo "🔧 Cambiando a entorno LOCAL (PostgreSQL local)"
         export FLASK_ENV=local
         echo "FLASK_ENV=local" > .env
         echo "✅ Entorno configurado: LOCAL"
-        echo "📂 Base de datos: SQLite (instance/local_database.db)"
+        echo "📂 Base de datos: PostgreSQL local (softbee_local)"
         ;;
     "development")
         echo "🔧 Cambiando a entorno DEVELOPMENT (PostgreSQL local)"
@@ -30,11 +30,11 @@ case $ENTORNO in
         echo "⚠️  Verifica que todas las variables estén configuradas en .env.production"
         ;;
     "testing")
-        echo "🔧 Cambiando a entorno TESTING (SQLite en memoria)"
+        echo "🔧 Cambiando a entorno TESTING (PostgreSQL para tests)"
         export FLASK_ENV=testing
         echo "FLASK_ENV=testing" > .env
         echo "✅ Entorno configurado: TESTING"
-        echo "📂 Base de datos: SQLite en memoria"
+        echo "📂 Base de datos: PostgreSQL (softbee_test)"
         ;;
     *)
         echo "❌ Entorno no válido: $ENTORNO"

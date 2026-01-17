@@ -27,8 +27,8 @@ def cambiar_entorno(entorno='local'):
         
         # Mostrar información del entorno
         if entorno == 'local':
-            print("🔧 Cambiando a entorno LOCAL (SQLite)")
-            print("📂 Base de datos: SQLite (instance/local_database.db)")
+            print("🔧 Cambiando a entorno LOCAL (PostgreSQL local)")
+            print("📂 Base de datos: PostgreSQL local (softbee_local)")
             print("🌐 URLs: Frontend: http://localhost:3000, Backend: http://localhost:5000")
             
         elif entorno == 'development':
@@ -44,8 +44,8 @@ def cambiar_entorno(entorno='local'):
             print("🌐 URLs: Configuradas via variables de entorno")
             
         elif entorno == 'testing':
-            print("🔧 Cambiando a entorno TESTING (SQLite en memoria)")
-            print("📂 Base de datos: SQLite en memoria")
+            print("🔧 Cambiando a entorno TESTING (PostgreSQL para tests)")
+            print("📂 Base de datos: PostgreSQL (softbee_test)")
             print("🌐 URLs: URLs de prueba")
         
         print(f"✅ Entorno configurado: {entorno.upper()}")

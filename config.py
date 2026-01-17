@@ -43,8 +43,8 @@ class LocalConfig(Config):
     DEBUG = True
     TESTING = False
     
-    # Base de datos local SQLite (más fácil para desarrollo)
-    DATABASE_URL = os.getenv("DATABASE_URL", f"sqlite:///{os.path.join(DATABASE_DIR, 'instance', 'local_database.db')}")
+    # Base de datos PostgreSQL local para desarrollo
+    DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/softbee_local")
     
     # URLs para desarrollo local
     FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
@@ -81,8 +81,8 @@ class TestingConfig(Config):
     DEBUG = True
     TESTING = True
     
-    # Base de datos en memoria para tests
-    DATABASE_URL = "sqlite:///:memory:"
+    # Base de datos PostgreSQL para tests
+    DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/softbee_test")
     
     # Desactivar protecciones para facilitar testing
     WTF_CSRF_ENABLED = False
